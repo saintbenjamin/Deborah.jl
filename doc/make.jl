@@ -216,29 +216,37 @@ makedocs(
     doctest = ("doctest=only" in ARGS) ? :only : true,
 )
 
-# if "pdf" in ARGS
-#     # hack to only deploy the actual pdf-file
-#     mkpath(joinpath(@__DIR__, "build-pdf", "commit"))
-#     let files = readdir(joinpath(@__DIR__, "build-pdf"))
-#         for f in files
-#             if startswith(f, "Documenter.jl") && endswith(f, ".pdf")
-#                 mv(
-#                     joinpath(@__DIR__, "build-pdf", f),
-#                     joinpath(@__DIR__, "build-pdf", "commit", f)
-#                 )
-#             end
-#         end
-#     end
-#     deploydocs(
-#         repo = "github.com/JuliaDocs/Documenter.jl.git",
-#         target = "pdf/build-pdf/commit",
-#         branch = "gh-pages-pdf",
-#         forcepush = true,
-#     )
-# else
-#     deploydocs(
-#         repo = "github.com/JuliaDocs/Documenter.jl.git",
-#         target = "build",
-#         push_preview = true,
-#     )
-# end
+# ============================================================================
+# Deploy docs
+# ============================================================================
+
+if "pdf" in ARGS
+    # Move only the generated PDF into a dedicated commit directory
+    pdf_commit_dir = joinpath(@__DIR__, "build-pdf", "commit")
+    mkpath(pdf_commit_dir)
+
+    for f in readdir(joinpath(@__DIR__, "build-pdf"))
+        if endswith(f, ".pdf")
+            mv(
+                joinpath(@__DIR__, "build-pdf", f),
+                joinpath(pdf_commit_dir, f),
+                force = true,
+            )
+        end
+    end
+
+    deploydocs(
+        repo   = "github.com/saintbenjamin/Deborah.jl.git",
+        target = "build-pdf/commit",
+        branch = "gh-pages-pdf",
+        devbranch = "main",
+        forcepush = true,
+    )
+
+else
+    deploydocs(
+        repo   = "github.com/saintbenjamin/Deborah.jl.git",
+        branch = "gh-pages",
+        devbranch = "main",
+    )
+end
