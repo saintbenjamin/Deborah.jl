@@ -249,5 +249,6 @@ else
         branch = "gh-pages",
         devbranch = "main",
         target    = "build",
+        forcepush = true,
     )
 end
