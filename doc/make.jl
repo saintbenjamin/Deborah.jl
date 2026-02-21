@@ -248,5 +248,6 @@ else
         repo   = "github.com/saintbenjamin/Deborah.jl.git",
         branch = "gh-pages",
         devbranch = "main",
+        target    = "build",
     )
 end
