@@ -1,0 +1,496 @@
+#!/bin/bash
+# scripts/utils-Deborah.shlib
+# shellcheck shell=bash
+
+print_usage_DeborahThreads() {
+    echo "Usage:"
+    echo "  $0 [INPUT1-INPUT2-...-OUTPUT] MODEL ENS_ID BLOCK_SIZE"
+    echo ""
+    echo "Examples:"
+    echo "  $0 TrM1-TrM2 LightGBM 0 500"
+    echo "  $0 Plaq-Rect-TrM1 LightGBM 0 500"
+    echo ""
+    echo "Available models:"
+    echo "  LightGBM   : LightGBM"
+    echo "  Ridge      : Ridge regression"
+    echo "  Lasso      : Lasso regression"
+    echo "  Baseline   : Use average of input1 only"
+    echo "  Random     : Generate prediction with mean 0 and same std as data"
+    echo "  MiddleGBM  : Perform LightGBM hyperparameter tuning"
+    echo "  PyGBM      : LightGBM with PyCall"
+    exit 1
+}
+
+generate_toml_DeborahThreads() {
+    local location="$1"
+    local ensemble="$2"
+    local label="$3"
+    local train="$4"
+    local io_X="$5"
+    local io_Y="$6"
+    local model="$7"
+    local ranseed="$8"
+    local N_bs="$9"
+    local blk_size="${10}"
+    local bin_size="${11}"
+    local overall_name="${12}"
+    local analysis_header="${13}"
+    local IDX_shift="${14}"
+    local read_column_X="${15}"
+    local read_column_Y="${16}"
+    local dump_X="${17}"
+    local use_abbreviation="${18}"
+    local index_column="${19}"
+    local bootstrap_method="${20}"
+
+    local toml_name="config_DeborahThreads_${overall_name}.toml"
+
+    cat > "$toml_name" <<EOF
+[data]
+labels = ${label}
+trains = ${train}
+location = "${location}"
+ensemble = "${ensemble}"
+analysis_header = "${analysis_header}"
+X = ${io_X}
+Y = "${io_Y}"
+model = "${model}"
+read_column_X = ${read_column_X}
+read_column_Y = ${read_column_Y}
+index_column = ${index_column}
+IDX_shift = ${IDX_shift}
+dump_X = ${dump_X}
+use_abbreviation = ${use_abbreviation}
+
+[bootstrap]
+ranseed = ${ranseed}
+N_bs = ${N_bs}
+blk_size = ${blk_size}
+method = "${bootstrap_method}"
+
+[jackknife]
+bin_size = ${bin_size}
+
+[abbreviation]
+EOF
+
+    for key in "${ABBREV_KEYS[@]}"; do
+        echo "\"$key\" = \"${ABBREV_MAP[$key]}\"" >> "$toml_name"
+    done
+
+    echo "$toml_name"
+}
+
+run_parallel_batch_DeborahThreads() {
+    local batch_size=$1
+    local program="$2"
+    local label_joined="$3"
+    local train_joined="$4"
+    local location="$5"
+    local ensemble="$6"
+    local analysis_header="$7"
+    local io_str="$8"
+    local io_X="$9"
+    local io_Y="${10}"
+    local model_tag="${11}"
+    local model="${12}"
+    local IDX_shift="${13}"
+    local read_column_X="${14}"
+    local read_column_Y="${15}"
+    local dump_X="${16}"
+    local ranseed="${17}"
+    local N_bs="${18}"
+    local blk_size="${19}"
+    local bin_size="${20}"
+    local my_anly_dir="${21}"
+    local use_abbreviation="${22}"
+    local io_X_Y="${23}"
+    local index_column="${24}"
+    local bootstrap_method="${25}"
+
+    if [ "$use_abbreviation" == "true" ]; then
+        local overall_name="${ensemble}_${io_str}_${model_tag}"
+    else
+        local overall_name="${ensemble}_${io_X_Y}_${model_tag}"
+    fi
+    local LOG="run_DeborahThreads_${overall_name}.log"
+    [ -f "${LOG}" ] && rm -f "${LOG}"
+
+    local toml_file
+    toml_file=$(generate_toml_DeborahThreads \
+        "./${location}" "${ensemble}" \
+        "${label_joined}" "${train_joined}" \
+        "${io_X}" "${io_Y}" "${model}" \
+        "${ranseed}" "${N_bs}" "${blk_size}" "${bin_size}" \
+        "${overall_name}" \
+        "${analysis_header}" "${IDX_shift}" "${read_column_X}" "${read_column_Y}" "${dump_X}" \
+        "${use_abbreviation}" "$index_column" "$bootstrap_method")
+
+    echo "JULIA_NUM_THREADS=${batch_size} julia --project=. ${program} ${toml_file}" &>> "${LOG}"
+    date &>> "${LOG}" &&
+    JULIA_NUM_THREADS=${batch_size} julia --project=. "${program}" "${toml_file}" &>> "${LOG}" &&
+    date &>> "${LOG}" &
+
+    wait
+
+    echo "julia DeborahDocumentEntry.jl ${toml_file}" &>> "${LOG}"  
+    julia DeborahDocumentEntry.jl "${toml_file}" &>> "${LOG}"
+
+    wait
+
+    date &>> "${LOG}"
+
+    [ -f "$toml_file" ] && cp "$toml_file" "$my_anly_dir"/.
+    mv "${LOG}" "${my_anly_dir}/." 2>/dev/null
+
+}
+
+run_parallel_batch_DeborahDocument() {
+    local batch_size=$1
+    local program="$2"
+    local label_joined="$3"
+    local train_joined="$4"
+    local location="$5"
+    local ensemble="$6"
+    local analysis_header="$7"
+    local io_str="$8"
+    local io_X="$9"
+    local io_Y="${10}"
+    local model_tag="${11}"
+    local model="${12}"
+    local IDX_shift="${13}"
+    local read_column_X="${14}"
+    local read_column_Y="${15}"
+    local dump_X="${16}"
+    local ranseed="${17}"
+    local N_bs="${18}"
+    local blk_size="${19}"
+    local bin_size="${20}"
+    local my_anly_dir="${21}"
+    local use_abbreviation="${22}"
+    local io_X_Y="${23}"
+    local index_column="${24}"
+    local bootstrap_method="${25}"
+
+    if [ "$use_abbreviation" == "true" ]; then
+        local overall_name="${ensemble}_${io_str}_${model_tag}"
+    else
+        local overall_name="${ensemble}_${io_X_Y}_${model_tag}"
+    fi
+    local LOG="run_DeborahDocument_${overall_name}.log"
+    [ -f "${LOG}" ] && rm -f "${LOG}"
+
+    local toml_file
+    toml_file=$(generate_toml_DeborahThreads \
+        "./${location}" "${ensemble}" \
+        "${label_joined}" "${train_joined}" \
+        "${io_X}" "${io_Y}" "${model}" \
+        "${ranseed}" "${N_bs}" "${blk_size}" "${bin_size}" \
+        "${overall_name}" \
+        "${analysis_header}" "${IDX_shift}" "${read_column_X}" "${read_column_Y}" "${dump_X}" \
+        "${use_abbreviation}" "$index_column" "$bootstrap_method")
+
+    { 
+        date
+        echo "julia DeborahDocumentEntry.jl ${toml_file}"  
+        julia DeborahDocumentEntry.jl "${toml_file}" 
+        date
+    } &>> "${LOG}"
+
+    wait
+
+    date &>> "${LOG}"
+
+    [ -f "$toml_file" ] && cp "$toml_file" "$my_anly_dir"/.
+    mv "${LOG}" "${my_anly_dir}/." 2>/dev/null
+
+}
+
+print_usage_Deborah() {
+    echo "Usage:"
+    echo "  $0 parallel [INPUT1-INPUT2-...-OUTPUT] MODEL ENS_ID BLOCK_SIZE"
+    echo "  $0 single   LABEL TRAIN [INPUT1-INPUT2-...-OUTPUT] MODEL ENS_ID BLOCK_SIZE"
+    echo ""
+    echo "Examples:"
+    echo "  $0 parallel       TrM1-TrM2 LightGBM 0 500"
+    echo "  $0 single   30 30 TrM1-TrM2 LightGBM 0 500"
+    echo "  $0 parallel       Plaq-Rect-TrM1 LightGBM 0 500"
+    echo "  $0 single   30 30 Plaq-Rect-TrM1 LightGBM 0 500"
+    echo ""
+    echo "Available models:"
+    echo "  LightGBM   : LightGBM"
+    echo "  Ridge      : Ridge regression"
+    echo "  Lasso      : Lasso regression"
+    echo "  Baseline   : Use average of input1 only"
+    echo "  Random     : Generate prediction with mean 0 and same std as data"
+    echo "  MiddleGBM  : Perform LightGBM hyperparameter tuning"
+    echo "  PyGBM      : LightGBM with PyCall"
+    exit 1
+}
+
+generate_toml_Deborah() {
+    local location="$1"
+    local ensemble="$2"
+    local label="$3"
+    local train="$4"
+    local io_X="$5"
+    local io_Y="$6"
+    local model="$7"
+    local ranseed="$8"
+    local N_bs="$9"
+    local blk_size="${10}"
+    local bin_size="${11}"
+    local overall_name="${12}"
+    local analysis_header="${13}"
+    local IDX_shift="${14}"
+    local read_column_X="${15}"
+    local read_column_Y="${16}"
+    local dump_X="${17}"
+    local use_abbreviation="${18}"
+    local index_column="${19}"
+    local bootstrap_method="${20}"
+
+    local toml_name="config_Deborah_${overall_name}.toml"
+
+    cat > "$toml_name" <<EOF
+[data]
+location = "${location}"
+ensemble = "${ensemble}"
+analysis_header = "${analysis_header}"
+X = ${io_X}
+Y = "${io_Y}"
+model = "${model}"
+read_column_X = ${read_column_X}
+read_column_Y = ${read_column_Y}
+index_column = ${index_column}
+LBP = ${label}
+TRP = ${train}
+IDX_shift = ${IDX_shift}
+dump_X = ${dump_X}
+use_abbreviation = ${use_abbreviation}
+
+[bootstrap]
+ranseed = ${ranseed}
+N_bs = ${N_bs}
+blk_size = ${blk_size}
+method = "${bootstrap_method}"
+
+[jackknife]
+bin_size = ${bin_size}
+
+[abbreviation]
+EOF
+
+    for key in "${ABBREV_KEYS[@]}"; do
+        echo "\"$key\" = \"${ABBREV_MAP[$key]}\"" >> "$toml_name"
+    done
+
+    echo "$toml_name"
+}
+
+move_result_files_Deborah() {
+    local LOG="$1"
+    local overall_name="$2"
+    local model_tag="$3"
+    local my_tex_dir="$4"
+    local my_anly_dir="$5"
+    local dump_X="$6"
+
+    local summary_dat="summary_Deborah_${overall_name}.dat"
+
+    local confname="config_Deborah_${overall_name}.toml"
+    [ -f "$confname" ] && mv "$confname" "$my_tex_dir"
+
+    if [ -f "${my_tex_dir}/${summary_dat##*/}" ]; then
+        mv "${LOG}" "${my_tex_dir}/." 2>/dev/null
+    fi
+}
+
+run_parallel_batch_Deborah() {
+    local batch_size="$1"
+    local program="$2"
+    local location="$3"
+    local ensemble="$4"
+    local label_list=("${!5}")
+    local train_list=("${!6}")
+    local analysis_header="$7"
+    local io_str="$8"
+    local io_X="$9"
+    local io_Y="${10}"
+    local model_tag="${11}"
+    local model="${12}"
+    local IDX_shift="${13}"
+    local read_column_X="${14}"
+    local read_column_Y="${15}"
+    local dump_X="${16}"
+    local ranseed="${17}"
+    local N_bs="${18}"
+    local blk_size="${19}"
+    local bin_size="${20}"
+    local my_anly_dir="${21}"
+    local use_abbreviation="${22}"
+    local io_X_Y="${23}"
+    local index_column="${24}"
+    local bootstrap_method="${25}"
+
+    local nlb=${#label_list[@]}
+    local ntr=${#train_list[@]}
+    local njobs=$((nlb * ntr))
+
+    # Flattened job list: store (ilb, itr) pairs
+    local job_list=()
+    for ((ilb=0; ilb<nlb; ilb++)); do
+        for ((itr=0; itr<ntr; itr++)); do
+            job_list+=("${ilb},${itr}")
+        done
+    done
+
+    local n_batches=$(( (njobs + batch_size - 1) / batch_size ))
+
+    for ((batch=0; batch<n_batches; batch++)); do
+        local start=$((batch * batch_size))
+        local end=$((start + batch_size))
+        if (( end > njobs )); then end=$njobs; fi
+
+        for ((i=start; i<end; i++)); do
+            IFS=',' read -r ilb itr <<< "${job_list[$i]}"
+            local label="${label_list[$ilb]}"
+            local train="${train_list[$itr]}"
+            if [ "$use_abbreviation" == "true" ]; then
+                local overall_name="${ensemble}_${io_str}_${model_tag}_LBP_${label}_TRP_${train}"
+            else
+                local overall_name="${ensemble}_${io_X_Y}_${model_tag}_LBP_${label}_TRP_${train}"
+            fi
+            local LOG="run_Deborah_${overall_name}.log"
+            [ -f "${LOG}" ] && rm -f "${LOG}"
+
+            local my_tex_dir="${my_anly_dir}/${overall_name}"
+            # mkdir -p "${my_tex_dir}/figs"
+
+            local toml_file
+            toml_file=$(generate_toml_Deborah \
+            "./${location}" "${ensemble}" \
+            "${label}" "${train}" \
+            "${io_X}" "${io_Y}" "${model}" \
+            "${ranseed}" "${N_bs}" "${blk_size}" "${bin_size}" \
+            "${overall_name}" \
+            "${analysis_header}" "${IDX_shift}" "${read_column_X}" "${read_column_Y}" "${dump_X}" \
+            "${use_abbreviation}" "$index_column" "$bootstrap_method")
+
+            if [ ! -f "$toml_file" ]; then
+                echo "[ERROR] TOML not generated: $toml_file" | tee -a "${LOG}"
+                continue
+            fi
+
+            echo "julia --project=. ${program} ${toml_file}" &>> "${LOG}"
+            date &>> "${LOG}" &&
+            julia --project=. "${program}" "${toml_file}" &>> "${LOG}" &&
+            date &>> "${LOG}" &
+        done
+
+        wait
+
+        for ((i=start; i<end; i++)); do
+            IFS=',' read -r ilb itr <<< "${job_list[$i]}"
+            local label="${label_list[$ilb]}"
+            local train="${train_list[$itr]}"
+            if [ "$use_abbreviation" == "true" ]; then
+                local overall_name="${ensemble}_${io_str}_${model_tag}_LBP_${label}_TRP_${train}"
+            else
+                local overall_name="${ensemble}_${io_X_Y}_${model_tag}_LBP_${label}_TRP_${train}"
+            fi
+            local LOG="run_Deborah_${overall_name}.log"
+            local my_tex_dir="${my_anly_dir}/${overall_name}"
+
+            move_result_files_Deborah "$LOG" "$overall_name" "$model_tag" "$my_tex_dir" "$my_anly_dir" "$dump_X"
+        done
+
+        wait
+    done
+}
+
+run_single_job_Deborah() {
+    local program="$1"
+    local location="$2"
+    local ensemble="$3"
+    local label_list=("${!4}")
+    local train_list=("${!5}")
+    local analysis_header="$6"
+    local io_str="$7"
+    local io_X="$8"
+    local io_Y="$9"
+    local model_tag="${10}"
+    local model="${11}"
+    local IDX_shift="${12}"
+    local read_column_X="${13}"
+    local read_column_Y="${14}"
+    local dump_X="${15}"
+    local ranseed="${16}"
+    local N_bs="${17}"
+    local blk_size="${18}"
+    local bin_size="${19}"
+    local my_anly_dir="${20}"
+    local use_abbreviation="${21}"
+    local io_X_Y="${22}"
+    local manual_label="${23}"
+    local manual_train="${24}"
+    local index_column="${25}"
+    local bootstrap_method="${26}"
+
+    local ilb=-1
+    local itr=-1
+
+    for ((i=0; i<${#label_list[@]}; i++)); do
+        if [[ "${label_list[$i]}" == "$manual_label" ]]; then
+            ilb=$i
+            break
+        fi
+    done
+
+    for ((j=0; j<${#train_list[@]}; j++)); do
+        if [[ "${train_list[$j]}" == "$manual_train" ]]; then
+            itr=$j
+            break
+        fi
+    done
+
+    if (( ilb < 0 || itr < 0 )); then
+        echo "Invalid label or train value: $manual_label / $manual_train"
+        return 1
+    fi
+
+    if [ "$use_abbreviation" == "true" ]; then
+        local overall_name="${ensemble}_${io_str}_${model_tag}_LBP_${manual_label}_TRP_${manual_train}"
+    else
+        local overall_name="${ensemble}_${io_X_Y}_${model_tag}_LBP_${manual_label}_TRP_${manual_train}"
+    fi
+    local LOG="run_Deborah_${overall_name}.log"
+    [ -f "${LOG}" ] && rm -f "${LOG}"
+
+    local my_tex_dir="${my_anly_dir}/${overall_name}"        
+    # mkdir -p "${my_tex_dir}/figs"
+
+    local toml_file
+    toml_file=$(generate_toml_Deborah \
+    "./${location}" "${ensemble}" \
+    "${manual_label}" "${manual_train}" \
+    "${io_X}" "${io_Y}" "${model}" \
+    "${ranseed}" "${N_bs}" "${blk_size}" "${bin_size}" \
+    "${overall_name}" \
+    "${analysis_header}" "${IDX_shift}" "${read_column_X}" "${read_column_Y}" "${dump_X}" \
+    "${use_abbreviation}" "$index_column" "$bootstrap_method")
+
+    if [ ! -f "$toml_file" ]; then
+        echo "[ERROR] TOML not generated: $toml_file" | tee -a "${LOG}"
+        return 1
+    fi
+
+    echo "julia --project=. ${program} ${toml_file}" &>> "${LOG}"
+    date &>> "${LOG}" &&
+    julia --project=. "${program}" "${toml_file}" &>> "${LOG}"
+    date &>> "${LOG}"
+
+    wait
+
+    move_result_files_Deborah "$LOG" "$overall_name" "$model_tag" "$my_tex_dir" "$my_anly_dir" "$dump_X"
+}

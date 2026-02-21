@@ -1,0 +1,723 @@
+#!/bin/bash
+# scripts/utils-Esther.shlib
+# shellcheck shell=bash
+
+print_usage_EstherThreads() {
+    echo "Usage:"
+    echo "  $0 TrM1_MODEL TrM1_ABBREV TrM1_MODEL TrM2_ABBREV TrM3_MODEL TrM3_ABBREV TrM4_MODEL TrM4_ABBREV ENS_ID BLOCK_SIZE"
+    echo ""
+    echo "Examples:"
+    echo "  $0 TrM1-TrM1 Baseline TrM1-TrM2 LightGBM TrM1-TrM3 LightGBM TrM1-TrM4 LightGBM 0 500"
+    echo "  $0 Plaq-Rect-TrM1 LightGBM Plaq-Rect-TrM2 LightGBM Plaq-Rect-TrM3 LightGBM Plaq-Rect-TrM4 LightGBM 0 500"
+    echo ""
+    echo "Available models used in Deborah:"
+    echo "  LightGBM   : LightGBM"
+    echo "  Ridge      : Ridge regression"
+    echo "  Lasso      : Lasso regression"
+    echo "  Baseline   : Use average of input1 only"
+    echo "  Random     : Generate prediction with mean 0 and same std as data"
+    echo "  MiddleGBM  : Perform LightGBM hyperparameter tuning"
+    echo "  PyGBM      : LightGBM with PyCall"
+    exit 1
+}
+
+generate_toml_EstherThreads() {
+    local location="$1"
+    local ensemble="$2"
+    local label="$3"
+    local train="$4"
+    local TrM1_X="$5"
+    local TrM1_Y="$6"
+    local TrM1_model="$7"
+    local TrM1_read_column_X="$8"
+    local TrM1_read_column_Y="$9"
+    local TrM1_index_column="${10}"
+    local TrM2_X="${11}"
+    local TrM2_Y="${12}"
+    local TrM2_model="${13}"
+    local TrM2_read_column_X="${14}"
+    local TrM2_read_column_Y="${15}"
+    local TrM2_index_column="${16}"
+    local TrM3_X="${17}"
+    local TrM3_Y="${18}"
+    local TrM3_model="${19}"
+    local TrM3_read_column_X="${20}"
+    local TrM3_read_column_Y="${21}"
+    local TrM3_index_column="${22}"
+    local TrM4_X="${23}"
+    local TrM4_Y="${24}"
+    local TrM4_model="${25}"
+    local TrM4_read_column_X="${26}"
+    local TrM4_read_column_Y="${27}"
+    local TrM4_index_column="${28}"
+    local L="${29}"
+    local T="${30}"
+    local b="${31}"
+    local k="${32}"
+    local N_flavor="${33}"
+    local ranseed="${34}"
+    local N_bs="${35}"
+    local blk_size="${36}"
+    local bin_size="${37}"
+    local overall_name="${38}"
+    local analysis_header="${39}"
+    local IDX_shift="${40}"
+    local dump_X="${41}"
+    local use_abbreviation="${42}"
+    local bootstrap_method="${43}"
+
+    local toml_name="config_EstherThreads_${overall_name}.toml"
+    local kappa="0.${k}"
+
+    cat > "$toml_name" <<EOF
+[data]
+labels = ${label}
+trains = ${train}
+location = "${location}"
+ensemble = "${ensemble}"
+analysis_header = "${analysis_header}"
+TrM1_X = ${TrM1_X}
+TrM1_Y = "${TrM1_Y}"
+TrM1_model = "${TrM1_model}"
+TrM1_read_column_X = ${TrM1_read_column_X}
+TrM1_read_column_Y = ${TrM1_read_column_Y}
+TrM1_index_column = ${TrM1_index_column}
+TrM2_X = ${TrM2_X}
+TrM2_Y = "${TrM2_Y}"
+TrM2_model = "${TrM2_model}"
+TrM2_read_column_X = ${TrM2_read_column_X}
+TrM2_read_column_Y = ${TrM2_read_column_Y}
+TrM2_index_column = ${TrM2_index_column}
+TrM3_X = ${TrM3_X}
+TrM3_Y = "${TrM3_Y}"
+TrM3_model = "${TrM3_model}"
+TrM3_read_column_X = ${TrM3_read_column_X}
+TrM3_read_column_Y = ${TrM3_read_column_Y}
+TrM3_index_column = ${TrM3_index_column}
+TrM4_X = ${TrM4_X}
+TrM4_Y = "${TrM4_Y}"
+TrM4_model = "${TrM4_model}"
+TrM4_read_column_X = ${TrM4_read_column_X}
+TrM4_read_column_Y = ${TrM4_read_column_Y}
+TrM4_index_column = ${TrM4_index_column}
+use_abbreviation = ${use_abbreviation}
+
+[input_meta]
+ns = ${L}
+nt = ${T}
+nf = ${N_flavor}
+beta = ${b}
+kappa = ${kappa}
+
+[bootstrap]
+ranseed = ${ranseed}
+N_bs = ${N_bs}
+blk_size = ${blk_size}
+method = "${bootstrap_method}"
+
+[jackknife]
+bin_size = ${bin_size}
+
+[deborah]
+IDX_shift = ${IDX_shift}
+dump_X = ${dump_X}
+
+[abbreviation]
+EOF
+
+    for key in "${ABBREV_KEYS[@]}"; do
+        echo "\"$key\" = \"${ABBREV_MAP[$key]}\"" >> "$toml_name"
+    done
+
+    echo "$toml_name"
+}
+
+run_parallel_batch_EstherThreads() {
+    local batch_size="$1"
+    local label_joined="$2"
+    local train_joined="$3"
+    local ensemble="$4"
+    local M1_str="$5"
+    local M1_X="$6"
+    local M1_Y="$7"
+    local M1_tag="$8"
+    local M1_model="$9"
+    local M1_read_column_X="${10}"
+    local M1_read_column_Y="${11}"
+    local M1_index_column="${12}"
+    local M1_X_Y="${13}"
+    local M2_str="${14}"
+    local M2_X="${15}"
+    local M2_Y="${16}"
+    local M2_tag="${17}"
+    local M2_model="${18}"
+    local M2_read_column_X="${19}"
+    local M2_read_column_Y="${20}"
+    local M2_index_column="${21}"
+    local M2_X_Y="${22}"
+    local M3_str="${23}"
+    local M3_X="${24}"
+    local M3_Y="${25}"
+    local M3_tag="${26}"
+    local M3_model="${27}"
+    local M3_read_column_X="${28}"
+    local M3_read_column_Y="${29}"
+    local M3_index_column="${30}"
+    local M3_X_Y="${31}"
+    local M4_str="${32}"
+    local M4_X="${33}"
+    local M4_Y="${34}"
+    local M4_tag="${35}"
+    local M4_model="${36}"
+    local M4_read_column_X="${37}"
+    local M4_read_column_Y="${38}"
+    local M4_index_column="${39}"
+    local M4_X_Y="${40}"
+    local N_flavor="${41}"
+    local ranseed="${42}"
+    local N_bs="${43}"
+    local blk_size="${44}"
+    local bin_size="${45}"
+    local location="${46}"
+    local program="${47}"
+    local my_anly_dir="${48}"
+    local L="${49}"
+    local T="${50}"
+    local b="${51}"
+    local k="${52}"
+    local analysis_header="${53}"
+    local IDX_shift="${54}"
+    local dump_X="${55}"
+    local use_abbreviation="${56}"
+    local bootstrap_method="${57}"
+
+    if [ "$use_abbreviation" == "true" ]; then
+        local overall_name="${ensemble}_${M1_str}_${M1_tag}_${M2_str}_${M2_tag}_${M3_str}_${M3_tag}_${M4_str}_${M4_tag}"
+    else
+        local overall_name="${ensemble}_${M1_X_Y}_${M1_tag}_${M2_X_Y}_${M2_tag}_${M3_X_Y}_${M3_tag}_${M4_X_Y}_${M4_tag}"
+    fi
+    local LOG="run_EstherThreads_${overall_name}.log"
+    [ -f "${LOG}" ] && rm -f "${LOG}"
+
+    local toml_file
+    toml_file=$(generate_toml_EstherThreads \
+        "./${location}" "${ensemble}" \
+        "${label_joined}" "${train_joined}" \
+        "${M1_X}" "${M1_Y}" "${M1_model}" "${M1_read_column_X}" "${M1_read_column_Y}" "${M1_index_column}" \
+        "${M2_X}" "${M2_Y}" "${M2_model}" "${M2_read_column_X}" "${M2_read_column_Y}" "${M2_index_column}" \
+        "${M3_X}" "${M3_Y}" "${M3_model}" "${M3_read_column_X}" "${M3_read_column_Y}" "${M3_index_column}" \
+        "${M4_X}" "${M4_Y}" "${M4_model}" "${M4_read_column_X}" "${M4_read_column_Y}" "${M4_index_column}" \
+        "${L}" "${T}" "${b}" "${k}" "${N_flavor}" \
+        "${ranseed}" "${N_bs}" "${blk_size}" "${bin_size}" \
+        "${overall_name}" "${analysis_header}" "${IDX_shift}" "${dump_X}" "${use_abbreviation}" "${bootstrap_method}")
+
+    echo "JULIA_NUM_THREADS=${batch_size} julia --project=. ${program} ${toml_file}" &>> "${LOG}"
+    date &>> "${LOG}" &&
+    JULIA_NUM_THREADS=${batch_size} julia --project=. "${program}" "${toml_file}" &>> "${LOG}" &&
+    date &>> "${LOG}" &
+
+    wait
+
+    echo "julia EstherDocumentEntry.jl ${toml_file}" &>> "${LOG}"  
+    julia EstherDocumentEntry.jl "${toml_file}" &>> "${LOG}"
+
+    wait
+
+    date &>> "${LOG}"
+
+    [ -f "$toml_file" ] && cp "$toml_file" "$my_anly_dir"/.
+    mv "${LOG}" "${my_anly_dir}/." 2>/dev/null
+
+}
+
+run_parallel_batch_EstherDocument() {
+    local batch_size="$1"
+    local label_joined="$2"
+    local train_joined="$3"
+    local ensemble="$4"
+    local M1_str="$5"
+    local M1_X="$6"
+    local M1_Y="$7"
+    local M1_tag="$8"
+    local M1_model="$9"
+    local M1_read_column_X="${10}"
+    local M1_read_column_Y="${11}"
+    local M1_index_column="${12}"
+    local M1_X_Y="${13}"
+    local M2_str="${14}"
+    local M2_X="${15}"
+    local M2_Y="${16}"
+    local M2_tag="${17}"
+    local M2_model="${18}"
+    local M2_read_column_X="${19}"
+    local M2_read_column_Y="${20}"
+    local M2_index_column="${21}"
+    local M2_X_Y="${22}"
+    local M3_str="${23}"
+    local M3_X="${24}"
+    local M3_Y="${25}"
+    local M3_tag="${26}"
+    local M3_model="${27}"
+    local M3_read_column_X="${28}"
+    local M3_read_column_Y="${29}"
+    local M3_index_column="${30}"
+    local M3_X_Y="${31}"
+    local M4_str="${32}"
+    local M4_X="${33}"
+    local M4_Y="${34}"
+    local M4_tag="${35}"
+    local M4_model="${36}"
+    local M4_read_column_X="${37}"
+    local M4_read_column_Y="${38}"
+    local M4_index_column="${39}"
+    local M4_X_Y="${40}"
+    local N_flavor="${41}"
+    local ranseed="${42}"
+    local N_bs="${43}"
+    local blk_size="${44}"
+    local bin_size="${45}"
+    local location="${46}"
+    local program="${47}"
+    local my_anly_dir="${48}"
+    local L="${49}"
+    local T="${50}"
+    local b="${51}"
+    local k="${52}"
+    local analysis_header="${53}"
+    local IDX_shift="${54}"
+    local dump_X="${55}"
+    local use_abbreviation="${56}"
+    local bootstrap_method="${57}"
+
+    if [ "$use_abbreviation" == "true" ]; then
+        local overall_name="${ensemble}_${M1_str}_${M1_tag}_${M2_str}_${M2_tag}_${M3_str}_${M3_tag}_${M4_str}_${M4_tag}"
+    else
+        local overall_name="${ensemble}_${M1_X_Y}_${M1_tag}_${M2_X_Y}_${M2_tag}_${M3_X_Y}_${M3_tag}_${M4_X_Y}_${M4_tag}"
+    fi
+    local LOG="run_EstherDocument_${overall_name}.log"
+    [ -f "${LOG}" ] && rm -f "${LOG}"
+
+    local toml_file
+    toml_file=$(generate_toml_EstherThreads \
+        "./${location}" "${ensemble}" \
+        "${label_joined}" "${train_joined}" \
+        "${M1_X}" "${M1_Y}" "${M1_model}" "${M1_read_column_X}" "${M1_read_column_Y}" "${M1_index_column}" \
+        "${M2_X}" "${M2_Y}" "${M2_model}" "${M2_read_column_X}" "${M2_read_column_Y}" "${M2_index_column}" \
+        "${M3_X}" "${M3_Y}" "${M3_model}" "${M3_read_column_X}" "${M3_read_column_Y}" "${M3_index_column}" \
+        "${M4_X}" "${M4_Y}" "${M4_model}" "${M4_read_column_X}" "${M4_read_column_Y}" "${M4_index_column}" \
+        "${L}" "${T}" "${b}" "${k}" "${N_flavor}" \
+        "${ranseed}" "${N_bs}" "${blk_size}" "${bin_size}" \
+        "${overall_name}" "${analysis_header}" "${IDX_shift}" "${dump_X}" "${use_abbreviation}" "${bootstrap_method}")
+
+    { 
+        date
+        echo "julia EstherDocumentEntry.jl ${toml_file}"  
+        julia EstherDocumentEntry.jl "${toml_file}" 
+        date
+    } &>> "${LOG}"
+
+    wait
+
+    date &>> "${LOG}"
+
+    [ -f "$toml_file" ] && cp "$toml_file" "$my_anly_dir"/.
+    mv "${LOG}" "${my_anly_dir}/." 2>/dev/null
+
+}
+
+print_usage_Esther() {
+    echo "Usage:"
+    echo "  $0 parallel TrM1_MODEL TrM1_ABBREV TrM1_MODEL TrM2_ABBREV TrM3_MODEL TrM3_ABBREV TrM4_MODEL TrM4_ABBREV ENS_ID BLOCK_SIZE"
+    echo "  $0 single   LABEL TRAIN TrM1_MODEL TrM1_ABBREV TrM1_MODEL TrM2_ABBREV TrM3_MODEL TrM3_ABBREV TrM4_MODEL TrM4_ABBREV ENS_ID BLOCK_SIZE"
+    echo ""
+    echo "Examples:"
+    echo "  $0 parallel       TrM1-TrM1 Baseline TrM1-TrM2 LightGBM TrM1-TrM3 LightGBM TrM1-TrM4 LightGBM 0 500"
+    echo "  $0 single   30 30 TrM1-TrM1 Baseline TrM1-TrM2 LightGBM TrM1-TrM3 LightGBM TrM1-TrM4 LightGBM 0 500"
+    echo "  $0 parallel       Plaq-Rect-TrM1 LightGBM Plaq-Rect-TrM2 LightGBM Plaq-Rect-TrM3 LightGBM Plaq-Rect-TrM4 LightGBM 0 500"
+    echo "  $0 single   30 30 Plaq-Rect-TrM1 LightGBM Plaq-Rect-TrM2 LightGBM Plaq-Rect-TrM3 LightGBM Plaq-Rect-TrM4 LightGBM 0 500"
+    echo ""
+    echo "Available models used in Deborah:"
+    echo "  LightGBM   : LightGBM"
+    echo "  Ridge      : Ridge regression"
+    echo "  Lasso      : Lasso regression"
+    echo "  Baseline   : Use average of input1 only"
+    echo "  Random     : Generate prediction with mean 0 and same std as data"
+    echo "  MiddleGBM  : Perform LightGBM hyperparameter tuning"
+    echo "  PyGBM      : LightGBM with PyCall"
+    exit 1
+}
+
+generate_toml_Esther() {
+    local location="$1"
+    local ensemble="$2"
+    local LBP="$3"
+    local TRP="$4"
+    local TrM1_X="$5"
+    local TrM1_Y="$6"
+    local TrM1_model="$7"
+    local TrM1_read_column_X="$8"
+    local TrM1_read_column_Y="$9"
+    local TrM1_index_column="${10}"
+    local TrM2_X="${11}"
+    local TrM2_Y="${12}"
+    local TrM2_model="${13}"
+    local TrM2_read_column_X="${14}"
+    local TrM2_read_column_Y="${15}"
+    local TrM2_index_column="${16}"
+    local TrM3_X="${17}"
+    local TrM3_Y="${18}"
+    local TrM3_model="${19}"
+    local TrM3_read_column_X="${20}"
+    local TrM3_read_column_Y="${21}"
+    local TrM3_index_column="${22}"
+    local TrM4_X="${23}"
+    local TrM4_Y="${24}"
+    local TrM4_model="${25}"
+    local TrM4_read_column_X="${26}"
+    local TrM4_read_column_Y="${27}"
+    local TrM4_index_column="${28}"
+    local L="${29}"
+    local T="${30}"
+    local b="${31}"
+    local k="${32}"
+    local N_flavor="${33}"
+    local ranseed="${34}"
+    local N_bs="${35}"
+    local blk_size="${36}"
+    local bin_size="${37}"
+    local overall_name="${38}"
+    local analysis_header="${39}"
+    local IDX_shift="${40}"
+    local dump_X="${41}"
+    local use_abbreviation="${42}"
+    local bootstrap_method="${43}"
+
+    local toml_name="config_Esther_${overall_name}.toml"
+    local kappa="0.${k}"
+
+    cat > "$toml_name" <<EOF
+[data]
+location = "${location}"
+ensemble = "${ensemble}"
+analysis_header = "${analysis_header}"
+TrM1_X = ${TrM1_X}
+TrM1_Y = "${TrM1_Y}"
+TrM1_model = "${TrM1_model}"
+TrM1_read_column_X = ${TrM1_read_column_X}
+TrM1_read_column_Y = ${TrM1_read_column_Y}
+TrM1_index_column = ${TrM1_index_column}
+TrM2_X = ${TrM2_X}
+TrM2_Y = "${TrM2_Y}"
+TrM2_model = "${TrM2_model}"
+TrM2_read_column_X = ${TrM2_read_column_X}
+TrM2_read_column_Y = ${TrM2_read_column_Y}
+TrM2_index_column = ${TrM2_index_column}
+TrM3_X = ${TrM3_X}
+TrM3_Y = "${TrM3_Y}"
+TrM3_model = "${TrM3_model}"
+TrM3_read_column_X = ${TrM3_read_column_X}
+TrM3_read_column_Y = ${TrM3_read_column_Y}
+TrM3_index_column = ${TrM3_index_column}
+TrM4_X = ${TrM4_X}
+TrM4_Y = "${TrM4_Y}"
+TrM4_model = "${TrM4_model}"
+TrM4_read_column_X = ${TrM4_read_column_X}
+TrM4_read_column_Y = ${TrM4_read_column_Y}
+TrM4_index_column = ${TrM4_index_column}
+LBP = ${LBP}
+TRP = ${TRP}
+use_abbreviation = ${use_abbreviation}
+
+[input_meta]
+ns = ${L}
+nt = ${T}
+nf = ${N_flavor}
+beta = ${b}
+kappa = ${kappa}
+
+[bootstrap]
+ranseed = ${ranseed}
+N_bs = ${N_bs}
+blk_size = ${blk_size}
+method = "${bootstrap_method}"
+
+[jackknife]
+bin_size = ${bin_size}
+
+[deborah]
+IDX_shift = ${IDX_shift}
+dump_X = ${dump_X}
+
+[abbreviation]
+EOF
+
+    for key in "${ABBREV_KEYS[@]}"; do
+        echo "\"$key\" = \"${ABBREV_MAP[$key]}\"" >> "$toml_name"
+    done
+
+    echo "$toml_name"
+}
+
+run_parallel_batch_Esther() {
+    local batch_size="$1"
+    local label_list=("${!2}")
+    local train_list=("${!3}")
+    local ensemble="$4"
+    local M1_str="$5"
+    local M1_X="$6"
+    local M1_Y="$7"
+    local M1_tag="$8"
+    local M1_model="$9"
+    local M1_read_column_X="${10}"
+    local M1_read_column_Y="${11}"
+    local M1_index_column="${12}"
+    local M1_X_Y="${13}"
+    local M2_str="${14}"
+    local M2_X="${15}"
+    local M2_Y="${16}"
+    local M2_tag="${17}"
+    local M2_model="${18}"
+    local M2_read_column_X="${19}"
+    local M2_read_column_Y="${20}"
+    local M2_index_column="${21}"
+    local M2_X_Y="${22}"
+    local M3_str="${23}"
+    local M3_X="${24}"
+    local M3_Y="${25}"
+    local M3_tag="${26}"
+    local M3_model="${27}"
+    local M3_read_column_X="${28}"
+    local M3_read_column_Y="${29}"
+    local M3_index_column="${30}"
+    local M3_X_Y="${31}"
+    local M4_str="${32}"
+    local M4_X="${33}"
+    local M4_Y="${34}"
+    local M4_tag="${35}"
+    local M4_model="${36}"
+    local M4_read_column_X="${37}"
+    local M4_read_column_Y="${38}"
+    local M4_index_column="${39}"
+    local M4_X_Y="${40}"
+    local N_flavor="${41}"
+    local ranseed="${42}"
+    local N_bs="${43}"
+    local blk_size="${44}"
+    local bin_size="${45}"
+    local location="${46}"
+    local program="${47}"
+    local my_anly_dir="${48}"
+    local L="${49}"
+    local T="${50}"
+    local b="${51}"
+    local k="${52}"
+    local analysis_header="${53}"
+    local IDX_shift="${54}"
+    local dump_X="${55}"
+    local use_abbreviation="${56}"
+    local bootstrap_method="${57}"
+
+    local nlb=${#label_list[@]}
+    local ntr=${#train_list[@]}
+
+    # Flattened job list: (ilb, itr)
+    local job_list=()
+    for ((ilb=0; ilb<nlb; ilb++)); do
+        for ((itr=0; itr<ntr; itr++)); do
+            job_list+=("${ilb},${itr}")
+        done
+    done
+
+    local njobs=${#job_list[@]}
+    local n_batches=$(( (njobs + batch_size - 1) / batch_size ))
+
+    for ((batch=0; batch<n_batches; batch++)); do
+        local start=$((batch * batch_size))
+        local end=$((start + batch_size))
+        (( end > njobs )) && end=$njobs
+
+        for ((i=start; i<end; i++)); do
+            IFS=',' read -r ilb itr <<< "${job_list[$i]}"
+            local label="${label_list[$ilb]}"
+            local train="${train_list[$itr]}"
+
+            if [ "$use_abbreviation" == "true" ]; then
+                local overall_name="${ensemble}_${M1_str}_${M1_tag}_${M2_str}_${M2_tag}_${M3_str}_${M3_tag}_${M4_str}_${M4_tag}_LBP_${label}_TRP_${train}"
+            else
+                local overall_name="${ensemble}_${M1_X_Y}_${M1_tag}_${M2_X_Y}_${M2_tag}_${M3_X_Y}_${M3_tag}_${M4_X_Y}_${M4_tag}_LBP_${label}_TRP_${train}"
+            fi
+            local LOG="run_Esther_${overall_name}.log"
+            [ -f "${LOG}" ] && rm -f "${LOG}"
+
+            local my_tex_dir="${my_anly_dir}/${overall_name}"
+            mkdir -p "${my_tex_dir}"
+
+            local toml_file
+            toml_file=$(generate_toml_Esther \
+                "./${location}" "${ensemble}" \
+                "${label}" "${train}" \
+                "${M1_X}" "${M1_Y}" "${M1_model}" "${M1_read_column_X}" "${M1_read_column_Y}" "${M1_index_column}" \
+                "${M2_X}" "${M2_Y}" "${M2_model}" "${M2_read_column_X}" "${M2_read_column_Y}" "${M2_index_column}" \
+                "${M3_X}" "${M3_Y}" "${M3_model}" "${M3_read_column_X}" "${M3_read_column_Y}" "${M3_index_column}" \
+                "${M4_X}" "${M4_Y}" "${M4_model}" "${M4_read_column_X}" "${M4_read_column_Y}" "${M4_index_column}" \
+                "${L}" "${T}" "${b}" "${k}" "${N_flavor}" \
+                "${ranseed}" "${N_bs}" "${blk_size}" "${bin_size}" \
+                "${overall_name}" "${analysis_header}" "${IDX_shift}" "${dump_X}" "${use_abbreviation}" "${bootstrap_method}")
+
+            if [ ! -f "$toml_file" ]; then
+                echo "[ERROR] TOML not generated: $toml_file" | tee -a "${LOG}"
+                continue
+            fi
+
+            echo "julia --project=. ${program} ${toml_file}" &>> "${LOG}"
+            date &>> "${LOG}" &&
+            julia --project=. "${program}" "${toml_file}" &>> "${LOG}" &&
+            date &>> "${LOG}" &
+        done
+
+        wait
+
+        for ((i=start; i<end; i++)); do
+            IFS=',' read -r ilb itr <<< "${job_list[$i]}"
+            local label="${label_list[$ilb]}"
+            local train="${train_list[$itr]}"
+            if [ "$use_abbreviation" == "true" ]; then
+                local overall_name="${ensemble}_${M1_str}_${M1_tag}_${M2_str}_${M2_tag}_${M3_str}_${M3_tag}_${M4_str}_${M4_tag}_LBP_${label}_TRP_${train}"
+            else
+                local overall_name="${ensemble}_${M1_X_Y}_${M1_tag}_${M2_X_Y}_${M2_tag}_${M3_X_Y}_${M3_tag}_${M4_X_Y}_${M4_tag}_LBP_${label}_TRP_${train}"
+            fi
+            local LOG="run_Esther_${overall_name}.log"
+            local toml_file="config_Esther_${overall_name}.toml"
+            local my_tex_dir="${my_anly_dir}/${overall_name}"
+
+            local summary_dat="summary_Esther_${overall_name}.dat"
+
+            # [ -f "${summary_dat}" ] && mv "${summary_dat}" "${my_tex_dir}"
+            [ -f "${toml_file}" ] && mv "${toml_file}" "${my_tex_dir}"
+            [ -f "${my_tex_dir}/${summary_dat}" ] && mv "${LOG}" "${my_tex_dir}/."
+        done
+
+        wait
+    done
+}
+
+run_single_job_Esther() {
+    local batch_size="$1"
+    local label_list=("${!2}")
+    local train_list=("${!3}")
+    local ensemble="$4"
+    local M1_str="$5"
+    local M1_X="$6"
+    local M1_Y="$7"
+    local M1_tag="$8"
+    local M1_model="$9"
+    local M1_read_column_X="${10}"
+    local M1_read_column_Y="${11}"
+    local M1_index_column="${12}"
+    local M1_X_Y="${13}"
+    local M2_str="${14}"
+    local M2_X="${15}"
+    local M2_Y="${16}"
+    local M2_tag="${17}"
+    local M2_model="${18}"
+    local M2_read_column_X="${19}"
+    local M2_read_column_Y="${20}"
+    local M2_index_column="${21}"
+    local M2_X_Y="${22}"
+    local M3_str="${23}"
+    local M3_X="${24}"
+    local M3_Y="${25}"
+    local M3_tag="${26}"
+    local M3_model="${27}"
+    local M3_read_column_X="${28}"
+    local M3_read_column_Y="${29}"
+    local M3_index_column="${30}"
+    local M3_X_Y="${31}"
+    local M4_str="${32}"
+    local M4_X="${33}"
+    local M4_Y="${34}"
+    local M4_tag="${35}"
+    local M4_model="${36}"
+    local M4_read_column_X="${37}"
+    local M4_read_column_Y="${38}"
+    local M4_index_column="${39}"
+    local M4_X_Y="${40}"
+    local N_flavor="${41}"
+    local ranseed="${42}"
+    local N_bs="${43}"
+    local blk_size="${44}"
+    local bin_size="${45}"
+    local location="${46}"
+    local program="${47}"
+    local my_anly_dir="${48}"
+    local L="${49}"
+    local T="${50}"
+    local b="${51}"
+    local k="${52}"
+    local analysis_header="${53}"
+    local IDX_shift="${54}"
+    local dump_X="${55}"
+    local use_abbreviation="${56}"
+    local manual_label="${57}"
+    local manual_train="${58}"
+    local bootstrap_method="${59}"
+
+    local ilb=-1
+    local itr=-1
+
+    for ((i=0; i<${#label_list[@]}; i++)); do
+        if [[ "${label_list[$i]}" == "$manual_label" ]]; then
+            ilb=$i
+            break
+        fi
+    done
+
+    for ((j=0; j<${#train_list[@]}; j++)); do
+        if [[ "${train_list[$j]}" == "$manual_train" ]]; then
+            itr=$j
+            break
+        fi
+    done
+
+    if (( ilb < 0 || itr < 0 )); then
+        echo "Invalid label or train value: $manual_label / $manual_train"
+        return 1
+    fi
+
+    if [ "$use_abbreviation" == "true" ]; then
+        local overall_name="${ensemble}_${M1_str}_${M1_tag}_${M2_str}_${M2_tag}_${M3_str}_${M3_tag}_${M4_str}_${M4_tag}_LBP_${manual_label}_TRP_${manual_train}"
+    else
+        local overall_name="${ensemble}_${M1_X_Y}_${M1_tag}_${M2_X_Y}_${M2_tag}_${M3_X_Y}_${M3_tag}_${M4_X_Y}_${M4_tag}_LBP_${manual_label}_TRP_${manual_train}"
+    fi
+    local LOG="run_Esther_${overall_name}.log"
+    [ -f "${LOG}" ] && rm -f "${LOG}"
+
+    local my_tex_dir="${my_anly_dir}/${overall_name}"
+    # mkdir -p "${my_tex_dir}/figs"
+
+    local toml_file
+    toml_file=$(generate_toml_Esther \
+        "./${location}" "${ensemble}" \
+        "${manual_label}" "${manual_train}" \
+        "${M1_X}" "${M1_Y}" "${M1_model}" "${M1_read_column_X}" "${M1_read_column_Y}" "${M1_index_column}" \
+        "${M2_X}" "${M2_Y}" "${M2_model}" "${M2_read_column_X}" "${M2_read_column_Y}" "${M2_index_column}" \
+        "${M3_X}" "${M3_Y}" "${M3_model}" "${M3_read_column_X}" "${M3_read_column_Y}" "${M3_index_column}" \
+        "${M4_X}" "${M4_Y}" "${M4_model}" "${M4_read_column_X}" "${M4_read_column_Y}" "${M4_index_column}" \
+        "${L}" "${T}" "${b}" "${k}" "${N_flavor}" \
+        "${ranseed}" "${N_bs}" "${blk_size}" "${bin_size}" \
+        "${overall_name}" "${analysis_header}" "${IDX_shift}" "${dump_X}" "${use_abbreviation}" "${bootstrap_method}")
+
+    if [ ! -f "$toml_file" ]; then
+        echo "[ERROR] TOML not generated: $toml_file" | tee -a "${LOG}"
+        return 1
+    fi
+
+    echo "julia --project=. ${program} ${toml_file}" &>> "${LOG}"
+    date &>> "${LOG}" &&
+    julia --project=. "${program}" "${toml_file}" &>> "${LOG}" &&
+    date &>> "${LOG}"
+
+    [ -f "${toml_file}" ] && mv "${toml_file}" "${my_tex_dir}"
+    [ -f "${my_tex_dir}/${summary_dat}" ] && mv "${LOG}" "${my_tex_dir}/."
+
+}

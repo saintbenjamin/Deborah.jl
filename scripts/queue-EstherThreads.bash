@@ -1,0 +1,173 @@
+#!/bin/bash
+program=EstherThreadsEntry.jl
+batch_size=55
+
+location=nf4_clover_wilson_finiteT
+ranseed="850528"
+N_bs="1000"
+bootstrap_method="nonoverlapping"
+
+# label=("5"  "10" "15" "20" "25" 
+#        "30" "35" "40" "45" "50" 
+#        "55" "60" "65" "70" "75")
+label=("5"  "10" "15" "20" "25" 
+       "30" "35" "40" "45" "50")
+train=("0" "10" "20" "30" "40" "50" "60" "70" "80" "90" "100")
+
+# factors used in Deborah only
+analysis_header="analysis"
+IDX_shift="0"
+read_column="1"
+index_column="3"
+dump_X="false"
+# shellcheck disable=SC2034
+use_abbreviation="true"
+
+N_flavor=4
+
+# Resolve real path
+get_script_dir() {
+    SOURCE="${BASH_SOURCE[0]}"
+    while [ -h "$SOURCE" ]; do
+        DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+        SOURCE="$(readlink "$SOURCE")"
+        [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+    done
+    DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+    echo "$DIR"
+}
+SCRIPT_DIR=$(get_script_dir)
+
+# Source shared lib
+[ -f "./common.shlib" ] && source "./common.shlib"
+[ -f "${SCRIPT_DIR}/common.shlib" ] && source "${SCRIPT_DIR}/common.shlib"
+
+[ -f "./utils-Deborah.shlib" ] && source "./utils-Esther.shlib"
+[ -f "${SCRIPT_DIR}/utils-Esther.shlib" ] && source "${SCRIPT_DIR}/utils-Esther.shlib"
+
+if [[ -z $1 ]]; then
+    echo "Error: Missing required argument."
+    print_usage_EstherThreads
+    exit 1
+fi
+
+M1_str="$1"
+M1_model="$2"
+M2_str="$3"
+M2_model="$4"
+M3_str="$5"
+M3_model="$6"
+M4_str="$7"
+M4_model="$8"
+fix_ens="$9"
+binning="${10}"
+
+blk_size=$binning
+bin_size=$binning
+
+# shellcheck disable=SC2034
+declare -a M1_X
+# shellcheck disable=SC2034
+M1_Y=""
+parse_abbreviation "$M1_str" M1_X M1_Y
+M1_X_joined=$(printf '"%s",' "${M1_X[@]}")
+M1_X_joined="[${M1_X_joined%,}]"
+M1_X_underbar=$(printf '%s_' "${M1_X[@]}")
+M1_X_underbar="${M1_X_underbar%_}"
+M1_X_Y="${M1_X_underbar}_${M1_Y}"
+M1_tag=$(parse_model_tag "$M1_model")
+M1_read_column_X=$(yes "$read_column" | head -n "${#M1_X[@]}" | paste -sd, -)
+M1_read_column_X="[$M1_read_column_X]"
+M1_read_column_Y="${read_column}"
+M1_index_column="${index_column}"
+
+# shellcheck disable=SC2034
+declare -a M2_X
+# shellcheck disable=SC2034
+M2_Y=""
+parse_abbreviation "$M2_str" M2_X M2_Y
+M2_X_joined=$(printf '"%s",' "${M2_X[@]}")
+M2_X_joined="[${M2_X_joined%,}]" 
+M2_X_underbar=$(printf '%s_' "${M2_X[@]}")
+M2_X_underbar="${M2_X_underbar%_}"
+M2_X_Y="${M1_X_underbar}_${M2_Y}"
+M2_tag=$(parse_model_tag "$M2_model")
+M2_read_column_X=$(yes "$read_column" | head -n "${#M2_X[@]}" | paste -sd, -)
+M2_read_column_X="[$M2_read_column_X]"
+M2_read_column_Y="${read_column}"
+M2_index_column="${index_column}"
+# shellcheck disable=SC2034
+declare -a M3_X
+# shellcheck disable=SC2034
+M3_Y=""
+parse_abbreviation "$M3_str" M3_X M3_Y
+M3_X_joined=$(printf '"%s",' "${M3_X[@]}")
+M3_X_joined="[${M3_X_joined%,}]" 
+M3_X_underbar=$(printf '%s_' "${M3_X[@]}")
+M3_X_underbar="${M3_X_underbar%_}"
+M3_X_Y="${M3_X_underbar}_${M3_Y}"
+M3_tag=$(parse_model_tag "$M3_model")
+M3_read_column_X=$(yes "$read_column" | head -n "${#M3_X[@]}" | paste -sd, -)
+M3_read_column_X="[$M3_read_column_X]"
+M3_read_column_Y="${read_column}"
+M3_index_column="${index_column}"
+
+# shellcheck disable=SC2034
+declare -a M4_X
+# shellcheck disable=SC2034
+M4_Y=""
+parse_abbreviation "$M4_str" M4_X M4_Y
+M4_X_joined=$(printf '"%s",' "${M4_X[@]}")
+M4_X_joined="[${M4_X_joined%,}]" 
+M4_X_underbar=$(printf '%s_' "${M4_X[@]}")
+M4_X_underbar="${M4_X_underbar%_}"
+M4_X_Y="${M4_X_underbar}_${M4_Y}"
+M4_tag=$(parse_model_tag "$M4_model")
+M4_read_column_X=$(yes "$read_column" | head -n "${#M4_X[@]}" | paste -sd, -)
+M4_read_column_X="[$M4_read_column_X]"
+M4_read_column_Y="${read_column}"
+M4_index_column="${index_column}"
+
+# ----------------------------------------
+# Setup directory and file layout
+# ----------------------------------------
+HERE=$(pwd -P)
+HERE_location=${HERE}/${location}
+
+parse_ensemble_info_zero_idx "${HERE_location}"
+
+# shellcheck disable=SC2154
+ensemble="L${L[$fix_ens]}T${T[$fix_ens]}b${b[$fix_ens]}k${k[$fix_ens]}"
+
+# ----------------------------------------
+# Partition definitions
+# ----------------------------------------
+my_col_dir="${HERE_location}"/${analysis_header}_"${ensemble}"
+# mkdir -p "${my_col_dir}"
+
+if [ "$use_abbreviation" == "true" ]; then
+    my_anly_dir="${my_col_dir}"/${analysis_header}_"${ensemble}"_"${M1_str}"_${M1_tag}_"${M2_str}"_${M2_tag}_"${M3_str}"_${M3_tag}_"${M4_str}"_${M4_tag}
+else
+    my_anly_dir="${my_col_dir}"/${analysis_header}_"${ensemble}"_"${M1_X_Y}"_${M1_tag}_"${M2_X_Y}"_${M2_tag}_"${M3_X_Y}"_${M3_tag}_"${M4_X_Y}"_${M4_tag}
+fi
+# mkdir -p "${my_anly_dir}"
+
+label_joined=$(printf '"%s",' "${label[@]}")
+label_joined="[${label_joined%,}]" 
+
+train_joined=$(printf '"%s",' "${train[@]}")
+train_joined="[${train_joined%,}]" 
+
+run_parallel_batch_EstherThreads \
+    "$batch_size" \
+    "${label_joined}" "${train_joined}" \
+    "$ensemble" \
+    "$M1_str" "$M1_X_joined" "$M1_Y" "$M1_tag" "$M1_model" "$M1_read_column_X" "$M1_read_column_Y" "$M1_index_column" "${M1_X_Y}" \
+    "$M2_str" "$M2_X_joined" "$M2_Y" "$M2_tag" "$M2_model" "$M2_read_column_X" "$M2_read_column_Y" "$M2_index_column" "${M2_X_Y}" \
+    "$M3_str" "$M3_X_joined" "$M3_Y" "$M3_tag" "$M3_model" "$M3_read_column_X" "$M3_read_column_Y" "$M3_index_column" "${M3_X_Y}" \
+    "$M4_str" "$M4_X_joined" "$M4_Y" "$M4_tag" "$M4_model" "$M4_read_column_X" "$M4_read_column_Y" "$M4_index_column" "${M4_X_Y}" \
+    "$N_flavor" "$ranseed" "$N_bs" "$blk_size" "$bin_size" \
+    "$location" "$program" "$my_anly_dir" \
+    "${L[$fix_ens]}" "${T[$fix_ens]}" "${b[$fix_ens]}" "${k[$fix_ens]}" \
+    "${analysis_header}" "${IDX_shift}" "${dump_X}" \
+    "$use_abbreviation" "$bootstrap_method"

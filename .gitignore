@@ -1,0 +1,10 @@
+doc/build/*
+doc/build-pdf/*
+nf4_clover_wilson_finiteT
+*.tar.gz
+*.dat
+*.log
+/*.pdf
+ipynb/*.pdf
+/results_*.jld2
+/config_*.toml

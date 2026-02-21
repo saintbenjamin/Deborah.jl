@@ -1,0 +1,1001 @@
+#!/bin/bash
+# scripts/utils-Miriam.shlib
+# shellcheck shell=bash
+
+group_and_parse_ensembles() {
+    local location="$1"
+    local selector="$2"   # either group index (integer) or prefix string (e.g. L8T4b1.60)
+
+    declare -g -A group_map
+    declare -g -A prefix_seen
+    declare -g -a prefix_list
+    declare -g -a ensemble
+    declare -g -a arr_ensid
+    declare -g -a arr_ensem
+    declare -g -a arr_kappa
+    declare -g -a arr_nconf
+    declare -g ns nt nf beta csw
+
+    prefix_list=()
+    arr_ensid=()
+    arr_ensem=()
+    arr_kappa=()
+    arr_nconf=()
+    group_map=()
+    prefix_seen=()
+    ensemble=()
+
+    parse_ensemble_info_zero_idx "$location"
+
+    # 1) Build groups by prefix (everything before 'k')
+    # shellcheck disable=SC2154
+    for ens in "${ens_arr_zero_idx[@]}"; do
+        dirname=$(basename "$ens")
+        prefix=${dirname%%k*}
+        group_map["$prefix"]+="${dirname}"$'\n'
+        if [[ -z "${prefix_seen[$prefix]}" ]]; then
+            prefix_list+=("$prefix")
+            prefix_seen["$prefix"]=1
+        fi
+    done
+
+    # Interpret selector: if integer, treat as index; if string, treat as prefix
+    local select_mode target_gidx desired_prefix
+    if [[ -z "$selector" ]]; then
+        select_mode="index"; target_gidx=""
+    elif [[ "$selector" =~ ^[0-9]+$ ]]; then
+        select_mode="index"; target_gidx="$selector"
+    else
+        select_mode="prefix"; desired_prefix="$selector"
+    fi
+
+    local sorted_list id_list=()
+    local matched=false
+
+    # 2) Select target group by index or prefix
+    for ((gidx=0; gidx<${#prefix_list[@]}; gidx++)); do
+        prefix="${prefix_list[gidx]}"
+
+        if [[ "$select_mode" == "index" ]]; then
+            if [[ -n "$target_gidx" && "$gidx" != "$target_gidx" ]]; then
+                continue
+            fi
+        else
+            [[ "$prefix" == "$desired_prefix" ]] || continue
+        fi
+
+        [[ -n "${group_map[$prefix]}" ]] || continue
+        matched=true
+
+        # 3) Sort directory names based on L/T/b/k numeric components
+        sorted_list=$(echo "${group_map[$prefix]}" \
+            | sed '/^$/d' \
+            | awk -F'[LTbk]' '{print $2, $3, $4, $5, $0}' \
+            | sort -n -k1,1 -k2,2 -k3,3 -k4,4 \
+            | awk '{print $5}')
+
+        # 4) Collect IDs and map them to directory names
+        while IFS= read -r dirname; do
+            [[ -z "$dirname" ]] && continue
+            ens_path="${location}/${dirname}"
+            if [[ -f "$ens_path/header.info" ]]; then
+                line=$(<"$ens_path/header.info")
+                id_num=$(echo "$line" | sed -nE 's/^ID[[:space:]]+([0-9]+).*/\1/p')
+                # shellcheck disable=SC2004
+                [[ -n "$id_num" ]] && id_list+=("$id_num") && ensemble[$id_num]="$dirname"
+            fi
+        done <<< "$sorted_list"
+
+        # Preserve old behavior: process only one group when using index
+        break
+    done
+
+    if ! $matched; then
+        if [[ "$select_mode" == "prefix" ]]; then
+            echo "No group matched for prefix: '$desired_prefix'" >&2
+        else
+            echo "No group matched for index: '$target_gidx'" >&2
+        fi
+        return 1
+    fi
+
+    # 5) Parse header.info for each ensemble
+    local arr_idx=0
+    # shellcheck disable=SC2155
+    local os=$(uname)
+    for ij in "${id_list[@]}"; do
+        local ens_path="${location}/${ensemble[ij]}"
+        [[ -f "$ens_path/header.info" ]] || continue
+        # shellcheck disable=SC2155
+        local line
+        line=$(<"$ens_path/header.info")
+
+        local grep_cmd="grep -oP"
+        [[ "$os" == "Darwin" ]] && grep_cmd="ggrep -oP"
+
+        # shellcheck disable=SC2155
+        local id ensem kappa nconf
+        id=$(echo "$line"   | sed -nE 's/^ID[[:space:]]+([0-9]+).*/\1/p')
+        ensem=$(echo "$line"| sed -nE 's#^ID [0-9]+ / ([^/]+) /.*#\1#p')
+
+        ns=$($grep_cmd '/ ns[[:space:]]+\K[0-9]+(?=[[:space:]]+/)'    <<< "$line")
+        nt=$($grep_cmd '/ nt[[:space:]]+\K[0-9]+(?=[[:space:]]+/)'    <<< "$line")
+        nf=$($grep_cmd '/ nf[[:space:]]+\K[0-9]+(?=[[:space:]]+/)'    <<< "$line")
+        beta=$($grep_cmd '/ beta[[:space:]]+\K[0-9.]+(?=[[:space:]]+/)'<<< "$line")
+        csw=$($grep_cmd '/ csw[[:space:]]+\K[0-9.]+(?=[[:space:]]+/)'  <<< "$line")
+        # shellcheck disable=SC2155
+        kappa=$($grep_cmd '/ kappa[[:space:]]+\K[0-9.]+(?=[[:space:]]+/)'<<< "$line")
+        # shellcheck disable=SC2155
+        nconf=$($grep_cmd '/ N_meas[[:space:]]*= *\K[0-9]+(?=[[:space:]]+/)'<<< "$line")
+        # shellcheck disable=SC2034
+        arr_ensid[arr_idx]=$id
+        # shellcheck disable=SC2034
+        arr_ensem[arr_idx]=$ensem
+        # shellcheck disable=SC2034
+        arr_kappa[arr_idx]=$kappa
+        # shellcheck disable=SC2034
+        arr_nconf[arr_idx]=$nconf
+        ((arr_idx++))
+    done
+
+    # echo "========== Group $target_gidx: ${prefix_list[$target_gidx]} =========="
+    # echo
+    # echo "${arr_ensid[*]}"
+    # echo "${arr_ensem[*]}"
+    # echo "$ns"
+    # echo "$nt"
+    # echo "$nf"
+    # echo "$beta"
+    # echo "$csw"
+    # echo "${arr_kappa[*]}"
+    # echo "${arr_nconf[*]}"
+}
+
+print_usage_MiriamThreads() {
+    echo "Usage:"
+    echo "  $0 TrM1_MODEL TrM1_ABBREV TrM1_MODEL TrM2_ABBREV TrM3_MODEL TrM3_ABBREV TrM4_MODEL TrM4_ABBREV ENS_GROUP_ID BLOCK_SIZE"
+    echo ""
+    echo "Examples:"
+    echo "  $0 TrM1-TrM1 Baseline TrM1-TrM2 LightGBM TrM1-TrM3 LightGBM TrM1-TrM4 LightGBM 0 500"
+    echo "  $0 Plaq-Rect-TrM1 LightGBM Plaq-Rect-TrM2 LightGBM Plaq-Rect-TrM3 LightGBM Plaq-Rect-TrM4 LightGBM 0 500"
+    echo ""
+    echo "Available models used in Deborah:"
+    echo "  LightGBM   : LightGBM"
+    echo "  Ridge      : Ridge regression"
+    echo "  Lasso      : Lasso regression"
+    echo "  Baseline   : Use average of input1 only"
+    echo "  Random     : Generate prediction with mean 0 and same std as data"
+    echo "  MiddleGBM  : Perform LightGBM hyperparameter tuning"
+    echo "  PyGBM      : LightGBM with PyCall"
+    exit 1
+}
+
+generate_toml_MiriamThreads() {
+    local location="$1"
+    local multi_ensemble="$2"
+    local ensembles="$3"
+    local label="$4"
+    local train="$5"
+    local TrM1_X="$6"
+    local TrM1_Y="$7"
+    local TrM1_model="$8"
+    local TrM1_read_column_X="$9"
+    local TrM1_read_column_Y="${10}"
+    local TrM1_index_column="${11}"
+    local TrM2_X="${12}"
+    local TrM2_Y="${13}"
+    local TrM2_model="${14}"
+    local TrM2_read_column_X="${15}"
+    local TrM2_read_column_Y="${16}"
+    local TrM2_index_column="${17}"
+    local TrM3_X="${18}"
+    local TrM3_Y="${19}"
+    local TrM3_model="${20}"
+    local TrM3_read_column_X="${21}"
+    local TrM3_read_column_Y="${22}"
+    local TrM3_index_column="${23}"
+    local TrM4_X="${24}"
+    local TrM4_Y="${25}"
+    local TrM4_model="${26}"
+    local TrM4_read_column_X="${27}"
+    local TrM4_read_column_Y="${28}"
+    local TrM4_index_column="${29}"
+    local dump_original="${30}"
+    local ns="${31}"
+    local nt="${32}"
+    local nf="${33}"
+    local beta="${34}"
+    local csw="${35}"
+    local kappa_list="${36}"
+    local maxiter="${37}"
+    local eps="${38}"
+    local bin_size="${39}"
+    local ranseed="${40}"
+    local N_bs="${41}"
+    local blk_size="${42}"
+    local nkappaT="${43}"
+    local analysis_header="${44}"
+    local IDX_shift="${45}"
+    local dump_X="${46}"
+    local overall_name="${47}"
+    local use_abbreviation="${48}"
+    local bootstrap_method="${49}"
+
+    local toml_name="config_MiriamThreads_${overall_name}.toml"
+
+    cat > "$toml_name" <<EOF
+[data]
+labels = ${label}
+trains = ${train}
+location = "${location}"
+multi_ensemble = "${multi_ensemble}"
+ensembles = ${ensembles}
+analysis_header = "${analysis_header}"
+TrM1_X = ${TrM1_X}
+TrM1_Y = "${TrM1_Y}"
+TrM1_model = "${TrM1_model}"
+TrM1_read_column_X = ${TrM1_read_column_X}
+TrM1_read_column_Y = ${TrM1_read_column_Y}
+TrM1_index_column = ${TrM1_index_column}
+TrM2_X = ${TrM2_X}
+TrM2_Y = "${TrM2_Y}"
+TrM2_model = "${TrM2_model}"
+TrM2_read_column_X = ${TrM2_read_column_X}
+TrM2_read_column_Y = ${TrM2_read_column_Y}
+TrM2_index_column = ${TrM2_index_column}
+TrM3_X = ${TrM3_X}
+TrM3_Y = "${TrM3_Y}"
+TrM3_model = "${TrM3_model}"
+TrM3_read_column_X = ${TrM3_read_column_X}
+TrM3_read_column_Y = ${TrM3_read_column_Y}
+TrM3_index_column = ${TrM3_index_column}
+TrM4_X = ${TrM4_X}
+TrM4_Y = "${TrM4_Y}"
+TrM4_model = "${TrM4_model}"
+TrM4_read_column_X = ${TrM4_read_column_X}
+TrM4_read_column_Y = ${TrM4_read_column_Y}
+TrM4_index_column = ${TrM4_index_column}
+dump_original = ${dump_original}
+use_abbreviation = ${use_abbreviation}
+
+[input_meta]
+ns = ${ns}
+nt = ${nt}
+nf = ${nf}
+beta = ${beta}
+csw = ${csw}
+kappa_list = ${kappa_list}
+
+[solver]
+maxiter = ${maxiter}
+eps = ${eps}
+
+[jackknife]
+bin_size = ${bin_size}
+
+[bootstrap]
+ranseed = ${ranseed}
+N_bs = ${N_bs}
+blk_size = ${blk_size}
+method = "${bootstrap_method}"
+
+[trajectory]
+nkappaT = $nkappaT
+
+[deborah]
+IDX_shift = ${IDX_shift}
+dump_X = ${dump_X}
+
+[abbreviation]
+EOF
+
+    for key in "${ABBREV_KEYS[@]}"; do
+        echo "\"$key\" = \"${ABBREV_MAP[$key]}\"" >> "$toml_name"
+    done
+
+    echo "$toml_name"
+}
+
+run_parallel_batch_MiriamThreads() {
+    local batch_size="$1"
+    local program="$2"
+    local label_joined="$3"
+    local train_joined="$4"
+    local location="$5"
+    local multi_ensemble="$6"
+    local ensembles="$7"
+    local M1_str="$8"
+    local M1_X="$9"
+    local M1_Y="${10}"
+    local M1_tag="${11}"
+    local M1_model="${12}"
+    local M1_read_column_X="${13}"
+    local M1_read_column_Y="${14}"
+    local M1_index_column="${15}"
+    local M1_X_Y="${16}"
+    local M2_str="${17}"
+    local M2_X="${18}"
+    local M2_Y="${19}"
+    local M2_tag="${20}"
+    local M2_model="${21}"
+    local M2_read_column_X="${22}"
+    local M2_read_column_Y="${23}"
+    local M2_index_column="${24}"
+    local M2_X_Y="${25}"
+    local M3_str="${26}"
+    local M3_X="${27}"
+    local M3_Y="${28}"
+    local M3_tag="${29}"
+    local M3_model="${30}"
+    local M3_read_column_X="${31}"
+    local M3_read_column_Y="${32}"
+    local M3_index_column="${33}"
+    local M3_X_Y="${34}"
+    local M4_str="${35}"
+    local M4_X="${36}"
+    local M4_Y="${37}"
+    local M4_tag="${38}"
+    local M4_model="${39}"
+    local M4_read_column_X="${40}"
+    local M4_read_column_Y="${41}"
+    local M4_index_column="${42}"
+    local M4_X_Y="${43}"
+    local dump_original="${44}"
+    local ns="${45}"
+    local nt="${46}"
+    local nf="${47}"
+    local beta="${48}"
+    local csw="${49}"
+    local kappa_list="${50}"
+    local maxiter="${51}"
+    local eps="${52}"
+    local bin_size="${53}"
+    local ranseed="${54}"
+    local N_bs="${55}"
+    local blk_size="${56}"
+    local nkappaT="${57}"
+    local analysis_header="${58}"
+    local IDX_shift="${59}"
+    local dump_X="${60}"
+    local my_anly_dir="${61}"
+    local use_abbreviation="${62}"
+    local bootstrap_method="${63}"
+
+    if [ "$use_abbreviation" == "true" ]; then
+        local overall_name="${multi_ensemble}_${M1_str}_${M1_tag}_${M2_str}_${M2_tag}_${M3_str}_${M3_tag}_${M4_str}_${M4_tag}"
+    else
+        local overall_name="${multi_ensemble}_${M1_X_Y}_${M1_tag}_${M2_X_Y}_${M2_tag}_${M3_X_Y}_${M3_tag}_${M4_X_Y}_${M4_tag}"
+    fi
+
+    local LOG="run_MiriamThreads_${overall_name}.log"
+    [ -f "${LOG}" ] && rm -f "${LOG}"
+
+    local toml_file
+    toml_file=$(generate_toml_MiriamThreads \
+        "./${location}" "${multi_ensemble}" "${ensembles}" \
+        "${label_joined}" "${train_joined}" \
+        "${M1_X}" "${M1_Y}" "${M1_model}" "${M1_read_column_X}" "${M1_read_column_Y}" "${M1_index_column}" \
+        "${M2_X}" "${M2_Y}" "${M2_model}" "${M2_read_column_X}" "${M2_read_column_Y}" "${M2_index_column}" \
+        "${M3_X}" "${M3_Y}" "${M3_model}" "${M3_read_column_X}" "${M3_read_column_Y}" "${M3_index_column}" \
+        "${M4_X}" "${M4_Y}" "${M4_model}" "${M4_read_column_X}" "${M4_read_column_Y}" "${M4_index_column}" \
+        "${dump_original}" \
+        "${ns}" "${nt}" "${nf}" "${beta}" "${csw}" \
+        "${kappa_list}" \
+        "${maxiter}" "${eps}" \
+        "${bin_size}" "${ranseed}" "${N_bs}" "${blk_size}" \
+        "${nkappaT}" \
+        "${analysis_header}" "${IDX_shift}" "${dump_X}" \
+        "${overall_name}" "${use_abbreviation}" "${bootstrap_method}")
+
+    echo "JULIA_NUM_THREADS=${batch_size} julia --project=. ${program} ${toml_file}" &>> "${LOG}"
+    date &>> "${LOG}" &&
+    JULIA_NUM_THREADS=${batch_size} julia --project=. "${program}" "${toml_file}" &>> "${LOG}" &&
+    date &>> "${LOG}" &
+
+    wait
+
+    echo "julia MiriamDocumentEntry.jl ${toml_file}" &>> "${LOG}"  
+    julia MiriamDocumentEntry.jl "${toml_file}" &>> "${LOG}"
+
+    wait
+
+    date &>> "${LOG}"
+
+    [ -f "$toml_file" ] && cp "$toml_file" "$my_anly_dir"/.
+    mv "${LOG}" "${my_anly_dir}/." 2>/dev/null
+
+}
+
+run_parallel_batch_MiriamDocument() {
+    local batch_size="$1"
+    local program="$2"
+    local label_joined="$3"
+    local train_joined="$4"
+    local location="$5"
+    local multi_ensemble="$6"
+    local ensembles="$7"
+    local M1_str="$8"
+    local M1_X="$9"
+    local M1_Y="${10}"
+    local M1_tag="${11}"
+    local M1_model="${12}"
+    local M1_read_column_X="${13}"
+    local M1_read_column_Y="${14}"
+    local M1_index_column="${15}"
+    local M1_X_Y="${16}"
+    local M2_str="${17}"
+    local M2_X="${18}"
+    local M2_Y="${19}"
+    local M2_tag="${20}"
+    local M2_model="${21}"
+    local M2_read_column_X="${22}"
+    local M2_read_column_Y="${23}"
+    local M2_index_column="${24}"
+    local M2_X_Y="${25}"
+    local M3_str="${26}"
+    local M3_X="${27}"
+    local M3_Y="${28}"
+    local M3_tag="${29}"
+    local M3_model="${30}"
+    local M3_read_column_X="${31}"
+    local M3_read_column_Y="${32}"
+    local M3_index_column="${33}"
+    local M3_X_Y="${34}"
+    local M4_str="${35}"
+    local M4_X="${36}"
+    local M4_Y="${37}"
+    local M4_tag="${38}"
+    local M4_model="${39}"
+    local M4_read_column_X="${40}"
+    local M4_read_column_Y="${41}"
+    local M4_index_column="${42}"
+    local M4_X_Y="${43}"
+    local dump_original="${44}"
+    local ns="${45}"
+    local nt="${46}"
+    local nf="${47}"
+    local beta="${48}"
+    local csw="${49}"
+    local kappa_list="${50}"
+    local maxiter="${51}"
+    local eps="${52}"
+    local bin_size="${53}"
+    local ranseed="${54}"
+    local N_bs="${55}"
+    local blk_size="${56}"
+    local nkappaT="${57}"
+    local analysis_header="${58}"
+    local IDX_shift="${59}"
+    local dump_X="${60}"
+    local my_anly_dir="${61}"
+    local use_abbreviation="${62}"
+    local bootstrap_method="${63}"
+
+    if [ "$use_abbreviation" == "true" ]; then
+        local overall_name="${multi_ensemble}_${M1_str}_${M1_tag}_${M2_str}_${M2_tag}_${M3_str}_${M3_tag}_${M4_str}_${M4_tag}"
+    else
+        local overall_name="${multi_ensemble}_${M1_X_Y}_${M1_tag}_${M2_X_Y}_${M2_tag}_${M3_X_Y}_${M3_tag}_${M4_X_Y}_${M4_tag}"
+    fi
+
+    local LOG="run_MiriamDocument_${overall_name}.log"
+    [ -f "${LOG}" ] && rm -f "${LOG}"
+
+    local toml_file
+    toml_file=$(generate_toml_MiriamThreads \
+        "./${location}" "${multi_ensemble}" "${ensembles}" \
+        "${label_joined}" "${train_joined}" \
+        "${M1_X}" "${M1_Y}" "${M1_model}" "${M1_read_column_X}" "${M1_read_column_Y}" "${M1_index_column}" \
+        "${M2_X}" "${M2_Y}" "${M2_model}" "${M2_read_column_X}" "${M2_read_column_Y}" "${M2_index_column}" \
+        "${M3_X}" "${M3_Y}" "${M3_model}" "${M3_read_column_X}" "${M3_read_column_Y}" "${M3_index_column}" \
+        "${M4_X}" "${M4_Y}" "${M4_model}" "${M4_read_column_X}" "${M4_read_column_Y}" "${M4_index_column}" \
+        "${dump_original}" \
+        "${ns}" "${nt}" "${nf}" "${beta}" "${csw}" \
+        "${kappa_list}" \
+        "${maxiter}" "${eps}" \
+        "${bin_size}" "${ranseed}" "${N_bs}" "${blk_size}" \
+        "${nkappaT}" \
+        "${analysis_header}" "${IDX_shift}" "${dump_X}" \
+        "${overall_name}" "${use_abbreviation}" "${bootstrap_method}")
+
+    { 
+        date
+        echo "julia MiriamDocumentEntry.jl ${toml_file}"  
+        julia MiriamDocumentEntry.jl "${toml_file}" 
+        date
+    } &>> "${LOG}"
+
+    wait
+
+    [ -f "$toml_file" ] && cp "$toml_file" "$my_anly_dir"/.
+    mv "${LOG}" "${my_anly_dir}/." 2>/dev/null
+
+}
+
+print_usage_Miriam() {
+    echo "Usage:"
+    echo "  $0 parallel TrM1_MODEL TrM1_ABBREV TrM1_MODEL TrM2_ABBREV TrM3_MODEL TrM3_ABBREV TrM4_MODEL TrM4_ABBREV ENS_GROUP_ID BLOCK_SIZE"
+    echo "  $0 single   LABEL TRAIN TrM1_MODEL TrM1_ABBREV TrM1_MODEL TrM2_ABBREV TrM3_MODEL TrM3_ABBREV TrM4_MODEL TrM4_ABBREV ENS_GROUP_ID BLOCK_SIZE"
+    echo ""
+    echo "Examples:"
+    echo "  $0 parallel       TrM1-TrM1 Baseline TrM1-TrM2 LightGBM TrM1-TrM3 LightGBM TrM1-TrM4 LightGBM 0 500"
+    echo "  $0 single   30 30 TrM1-TrM1 Baseline TrM1-TrM2 LightGBM TrM1-TrM3 LightGBM TrM1-TrM4 LightGBM 0 500"
+    echo "  $0 parallel       Plaq-Rect-TrM1 LightGBM Plaq-Rect-TrM2 LightGBM Plaq-Rect-TrM3 LightGBM Plaq-Rect-TrM4 LightGBM 0 500"
+    echo "  $0 single   30 30 Plaq-Rect-TrM1 LightGBM Plaq-Rect-TrM2 LightGBM Plaq-Rect-TrM3 LightGBM Plaq-Rect-TrM4 LightGBM 0 500"
+    echo ""
+    echo "Available models used in Deborah:"
+    echo "  LightGBM   : LightGBM"
+    echo "  Ridge      : Ridge regression"
+    echo "  Lasso      : Lasso regression"
+    echo "  Baseline   : Use average of input1 only"
+    echo "  Random     : Generate prediction with mean 0 and same std as data"
+    echo "  MiddleGBM  : Perform LightGBM hyperparameter tuning"
+    echo "  PyGBM      : LightGBM with PyCall"
+    exit 1
+}
+
+generate_toml_Miriam() {
+    local location="$1"
+    local multi_ensemble="$2"
+    local ensembles="$3"
+    local LBP="$4"
+    local TRP="$5"
+    local TrM1_X="$6"
+    local TrM1_Y="$7"
+    local TrM1_model="$8"
+    local TrM1_read_column_X="$9"
+    local TrM1_read_column_Y="${10}"
+    local TrM1_index_column="${11}"
+    local TrM2_X="${12}"
+    local TrM2_Y="${13}"
+    local TrM2_model="${14}"
+    local TrM2_read_column_X="${15}"
+    local TrM2_read_column_Y="${16}"
+    local TrM2_index_column="${17}"
+    local TrM3_X="${18}"
+    local TrM3_Y="${19}"
+    local TrM3_model="${20}"
+    local TrM3_read_column_X="${21}"
+    local TrM3_read_column_Y="${22}"
+    local TrM3_index_column="${23}"
+    local TrM4_X="${24}"
+    local TrM4_Y="${25}"
+    local TrM4_model="${26}"
+    local TrM4_read_column_X="${27}"
+    local TrM4_read_column_Y="${28}"
+    local TrM4_index_column="${29}"
+    local dump_original="${30}"
+    local ns="${31}"
+    local nt="${32}"
+    local nf="${33}"
+    local beta="${34}"
+    local csw="${35}"
+    local kappa_list="${36}"
+    local maxiter="${37}"
+    local eps="${38}"
+    local bin_size="${39}"
+    local ranseed="${40}"
+    local N_bs="${41}"
+    local blk_size="${42}"
+    local nkappaT="${43}"
+    local analysis_header="${44}"
+    local IDX_shift="${45}"
+    local dump_X="${46}"
+    local overall_name="${47}"
+    local use_abbreviation="${48}"
+    local bootstrap_method="${49}"
+
+    local toml_name="config_Miriam_${overall_name}.toml"
+
+    cat > "$toml_name" <<EOF
+[data]
+location = "${location}"
+multi_ensemble = "${multi_ensemble}"
+ensembles = ${ensembles}
+analysis_header = "${analysis_header}"
+TrM1_X = ${TrM1_X}
+TrM1_Y = "${TrM1_Y}"
+TrM1_model = "${TrM1_model}"
+TrM1_read_column_X = ${TrM1_read_column_X}
+TrM1_read_column_Y = ${TrM1_read_column_Y}
+TrM1_index_column = ${TrM1_index_column}
+TrM2_X = ${TrM2_X}
+TrM2_Y = "${TrM2_Y}"
+TrM2_model = "${TrM2_model}"
+TrM2_read_column_X = ${TrM2_read_column_X}
+TrM2_read_column_Y = ${TrM2_read_column_Y}
+TrM2_index_column = ${TrM2_index_column}
+TrM3_X = ${TrM3_X}
+TrM3_Y = "${TrM3_Y}"
+TrM3_model = "${TrM3_model}"
+TrM3_read_column_X = ${TrM3_read_column_X}
+TrM3_read_column_Y = ${TrM3_read_column_Y}
+TrM3_index_column = ${TrM3_index_column}
+TrM4_X = ${TrM4_X}
+TrM4_Y = "${TrM4_Y}"
+TrM4_model = "${TrM4_model}"
+TrM4_read_column_X = ${TrM4_read_column_X}
+TrM4_read_column_Y = ${TrM4_read_column_Y}
+TrM4_index_column = ${TrM4_index_column}
+dump_original = ${dump_original}
+LBP = ${LBP}
+TRP = ${TRP}
+use_abbreviation = ${use_abbreviation}
+
+[input_meta]
+ns = ${ns}
+nt = ${nt}
+nf = ${nf}
+beta = ${beta}
+csw = ${csw}
+kappa_list = ${kappa_list}
+
+[solver]
+maxiter = ${maxiter}
+eps = ${eps}
+
+[jackknife]
+bin_size = ${bin_size}
+
+[bootstrap]
+ranseed = ${ranseed}
+N_bs = ${N_bs}
+blk_size = ${blk_size}
+method = "${bootstrap_method}"
+
+[trajectory]
+nkappaT = $nkappaT
+
+[deborah]
+IDX_shift = ${IDX_shift}
+dump_X = ${dump_X}
+
+[abbreviation]
+EOF
+
+    for key in "${ABBREV_KEYS[@]}"; do
+        echo "\"$key\" = \"${ABBREV_MAP[$key]}\"" >> "$toml_name"
+    done
+
+    echo "$toml_name"
+}
+
+run_parallel_batch_Miriam() {
+    local batch_size="$1"
+    local program="$2"
+    local label_list=("${!3}")
+    local train_list=("${!4}")
+    local location="$5"
+    local multi_ensemble="$6"
+    local ensembles="$7"
+    local M1_str="$8"
+    local M1_X="$9"
+    local M1_Y="${10}"
+    local M1_tag="${11}"
+    local M1_model="${12}"
+    local M1_read_column_X="${13}"
+    local M1_read_column_Y="${14}"
+    local M1_index_column="${15}"
+    local M1_X_Y="${16}"
+    local M2_str="${17}"
+    local M2_X="${18}"
+    local M2_Y="${19}"
+    local M2_tag="${20}"
+    local M2_model="${21}"
+    local M2_read_column_X="${22}"
+    local M2_read_column_Y="${23}"
+    local M2_index_column="${24}"
+    local M2_X_Y="${25}"
+    local M3_str="${26}"
+    local M3_X="${27}"
+    local M3_Y="${28}"
+    local M3_tag="${29}"
+    local M3_model="${30}"
+    local M3_read_column_X="${31}"
+    local M3_read_column_Y="${32}"
+    local M3_index_column="${33}"
+    local M3_X_Y="${34}"
+    local M4_str="${35}"
+    local M4_X="${36}"
+    local M4_Y="${37}"
+    local M4_tag="${38}"
+    local M4_model="${39}"
+    local M4_read_column_X="${40}"
+    local M4_read_column_Y="${41}"
+    local M4_index_column="${42}"
+    local M4_X_Y="${43}"
+    local dump_original="${44}"
+    local ns="${45}"
+    local nt="${46}"
+    local nf="${47}"
+    local beta="${48}"
+    local csw="${49}"
+    local kappa_list="${50}"
+    local maxiter="${51}"
+    local eps="${52}"
+    local bin_size="${53}"
+    local ranseed="${54}"
+    local N_bs="${55}"
+    local blk_size="${56}"
+    local nkappaT="${57}"
+    local analysis_header="${58}"
+    local IDX_shift="${59}"
+    local dump_X="${60}"
+    local my_anly_dir="${61}"
+    local use_abbreviation="${62}"
+    local bootstrap_method="${63}"
+
+    local nlb=${#label_list[@]}
+    local ntr=${#train_list[@]}
+
+    # Flattened job list: (ilb, itr)
+    local job_list=()
+    for ((ilb=0; ilb<nlb; ilb++)); do
+        for ((itr=0; itr<ntr; itr++)); do
+            job_list+=("${ilb},${itr}")
+        done
+    done
+
+    local njobs=${#job_list[@]}
+    local n_batches=$(( (njobs + batch_size - 1) / batch_size ))
+
+    for ((batch=0; batch<n_batches; batch++)); do
+        local start=$((batch * batch_size))
+        local end=$((start + batch_size))
+        (( end > njobs )) && end=$njobs
+
+        for ((i=start; i<end; i++)); do
+            IFS=',' read -r ilb itr <<< "${job_list[$i]}"
+            local label="${label_list[$ilb]}"
+            local train="${train_list[$itr]}"
+
+            if [ "$use_abbreviation" == "true" ]; then
+                local overall_name="${multi_ensemble}_${M1_str}_${M1_tag}_${M2_str}_${M2_tag}_${M3_str}_${M3_tag}_${M4_str}_${M4_tag}_LBP_${label}_TRP_${train}"
+            else
+                local overall_name="${multi_ensemble}_${M1_X_Y}_${M1_tag}_${M2_X_Y}_${M2_tag}_${M3_X_Y}_${M3_tag}_${M4_X_Y}_${M4_tag}_LBP_${label}_TRP_${train}"
+            fi
+
+            local LOG="run_Miriam_${overall_name}.log"
+            [ -f "${LOG}" ] && rm -f "${LOG}"
+
+            local my_tex_dir="${my_anly_dir}/${overall_name}"
+            # mkdir -p "${my_tex_dir}"
+
+            local toml_file
+            toml_file=$(generate_toml_Miriam \
+                "./${location}" "${multi_ensemble}" "${ensembles}" \
+                "${label}" "${train}" \
+                "${M1_X}" "${M1_Y}" "${M1_model}" "${M1_read_column_X}" "${M1_read_column_Y}" "${M1_index_column}" \
+                "${M2_X}" "${M2_Y}" "${M2_model}" "${M2_read_column_X}" "${M2_read_column_Y}" "${M2_index_column}" \
+                "${M3_X}" "${M3_Y}" "${M3_model}" "${M3_read_column_X}" "${M3_read_column_Y}" "${M3_index_column}" \
+                "${M4_X}" "${M4_Y}" "${M4_model}" "${M4_read_column_X}" "${M4_read_column_Y}" "${M4_index_column}" \
+                "${dump_original}" \
+                "${ns}" "${nt}" "${nf}" "${beta}" "${csw}" \
+                "${kappa_list}" \
+                "${maxiter}" "${eps}" \
+                "${bin_size}" "${ranseed}" "${N_bs}" "${blk_size}" \
+                "${nkappaT}" \
+                "${analysis_header}" "${IDX_shift}" "${dump_X}" \
+                "${overall_name}" "${use_abbreviation}" "${bootstrap_method}")
+
+            if [ ! -f "$toml_file" ]; then
+                echo "[ERROR] TOML not generated: $toml_file" | tee -a "${LOG}"
+                continue
+            fi
+
+            echo "julia --project=. ${program} ${toml_file}" &>> "${LOG}"
+            date &>> "${LOG}" &&
+            julia --project=. "${program}" "${toml_file}" &>> "${LOG}" &&
+            date &>> "${LOG}" &
+        done
+
+        wait
+
+        for ((i=start; i<end; i++)); do
+            IFS=',' read -r ilb itr <<< "${job_list[$i]}"
+            local label="${label_list[$ilb]}"
+            local train="${train_list[$itr]}"
+            if [ "$use_abbreviation" == "true" ]; then
+                local overall_name="${multi_ensemble}_${M1_str}_${M1_tag}_${M2_str}_${M2_tag}_${M3_str}_${M3_tag}_${M4_str}_${M4_tag}_LBP_${label}_TRP_${train}"
+            else
+                local overall_name="${multi_ensemble}_${M1_X_Y}_${M1_tag}_${M2_X_Y}_${M2_tag}_${M3_X_Y}_${M3_tag}_${M4_X_Y}_${M4_tag}_LBP_${label}_TRP_${train}"
+            fi
+            local LOG="run_Miriam_${overall_name}.log"
+            local toml_file="config_Miriam_${overall_name}.toml"
+            local my_tex_dir="${my_anly_dir}/${overall_name}"
+
+            [ -f "${toml_file}" ] && mv "${toml_file}" "${my_tex_dir}/."
+            mv "${LOG}" "${my_tex_dir}/." 2>/dev/null
+        done
+
+        wait
+    done
+
+}
+
+run_single_job_Miriam() {
+    local batch_size="$1"
+    local program="$2"
+    local label_list=("${!3}")
+    local train_list=("${!4}")
+    local location="$5"
+    local multi_ensemble="$6"
+    local ensembles="$7"
+    local M1_str="$8"
+    local M1_X="$9"
+    local M1_Y="${10}"
+    local M1_tag="${11}"
+    local M1_model="${12}"
+    local M1_read_column_X="${13}"
+    local M1_read_column_Y="${14}"
+    local M1_index_column="${15}"
+    local M1_X_Y="${16}"
+    local M2_str="${17}"
+    local M2_X="${18}"
+    local M2_Y="${19}"
+    local M2_tag="${20}"
+    local M2_model="${21}"
+    local M2_read_column_X="${22}"
+    local M2_read_column_Y="${23}"
+    local M2_index_column="${24}"
+    local M2_X_Y="${25}"
+    local M3_str="${26}"
+    local M3_X="${27}"
+    local M3_Y="${28}"
+    local M3_tag="${29}"
+    local M3_model="${30}"
+    local M3_read_column_X="${31}"
+    local M3_read_column_Y="${32}"
+    local M3_index_column="${33}"
+    local M3_X_Y="${34}"
+    local M4_str="${35}"
+    local M4_X="${36}"
+    local M4_Y="${37}"
+    local M4_tag="${38}"
+    local M4_model="${39}"
+    local M4_read_column_X="${40}"
+    local M4_read_column_Y="${41}"
+    local M4_index_column="${42}"
+    local M4_X_Y="${43}"
+    local dump_original="${44}"
+    local ns="${45}"
+    local nt="${46}"
+    local nf="${47}"
+    local beta="${48}"
+    local csw="${49}"
+    local kappa_list="${50}"
+    local maxiter="${51}"
+    local eps="${52}"
+    local bin_size="${53}"
+    local ranseed="${54}"
+    local N_bs="${55}"
+    local blk_size="${56}"
+    local nkappaT="${57}"
+    local analysis_header="${58}"
+    local IDX_shift="${59}"
+    local dump_X="${60}"
+    local my_anly_dir="${61}"
+    local use_abbreviation="${62}"
+    local manual_label="${63}"
+    local manual_train="${64}"
+    local bootstrap_method="${65}"
+
+    local ilb=-1
+    local itr=-1
+
+    for ((i=0; i<${#label_list[@]}; i++)); do
+        if [[ "${label_list[$i]}" == "$manual_label" ]]; then
+            ilb=$i
+            break
+        fi
+    done
+
+    for ((j=0; j<${#train_list[@]}; j++)); do
+        if [[ "${train_list[$j]}" == "$manual_train" ]]; then
+            itr=$j
+            break
+        fi
+    done
+
+    if (( ilb < 0 || itr < 0 )); then
+        echo "Invalid label or train value: $manual_label / $manual_train"
+        return 1
+    fi
+
+    if [ "$use_abbreviation" == "true" ]; then
+        local overall_name="${multi_ensemble}_${M1_str}_${M1_tag}_${M2_str}_${M2_tag}_${M3_str}_${M3_tag}_${M4_str}_${M4_tag}_LBP_${manual_label}_TRP_${manual_train}"
+    else
+        local overall_name="${multi_ensemble}_${M1_X_Y}_${M1_tag}_${M2_X_Y}_${M2_tag}_${M3_X_Y}_${M3_tag}_${M4_X_Y}_${M4_tag}_LBP_${manual_label}_TRP_${manual_train}"
+    fi
+    local LOG="run_Miriam_${overall_name}.log"
+    [ -f "${LOG}" ] && rm -f "${LOG}"
+
+    local my_tex_dir="${my_anly_dir}/${overall_name}"
+    # mkdir -p "${my_tex_dir}"
+
+    local toml_file
+    toml_file=$(generate_toml_Miriam \
+        "./${location}" "${multi_ensemble}" "${ensembles}" \
+        "${manual_label}" "${manual_train}" \
+        "${M1_X}" "${M1_Y}" "${M1_model}" "${M1_read_column_X}" "${M1_read_column_Y}" "${M1_index_column}" \
+        "${M2_X}" "${M2_Y}" "${M2_model}" "${M2_read_column_X}" "${M2_read_column_Y}" "${M2_index_column}" \
+        "${M3_X}" "${M3_Y}" "${M3_model}" "${M3_read_column_X}" "${M3_read_column_Y}" "${M3_index_column}" \
+        "${M4_X}" "${M4_Y}" "${M4_model}" "${M4_read_column_X}" "${M4_read_column_Y}" "${M4_index_column}" \
+        "${dump_original}" \
+        "${ns}" "${nt}" "${nf}" "${beta}" "${csw}" \
+        "${kappa_list}" \
+        "${maxiter}" "${eps}" \
+        "${bin_size}" "${ranseed}" "${N_bs}" "${blk_size}" \
+        "${nkappaT}" \
+        "${analysis_header}" "${IDX_shift}" "${dump_X}" \
+        "${overall_name}" "${use_abbreviation}" "${bootstrap_method}")
+
+    if [ ! -f "$toml_file" ]; then
+        echo "[ERROR] TOML not generated: $toml_file" | tee -a "${LOG}"
+        return 1
+    fi
+
+    echo "julia --project=. ${program} ${toml_file}" &>> "${LOG}"
+    date &>> "${LOG}" &&
+    julia --project=. "${program}" "${toml_file}" &>> "${LOG}" &&
+    date &>> "${LOG}"
+
+    wait
+
+    [ -f "${toml_file}" ] && mv "${toml_file}" "${my_tex_dir}/."
+    mv "${LOG}" "${my_tex_dir}/." 2>/dev/null
+
+}
+
+collect_and_sort_ensembles() {
+    mapfile -t enslist < <(
+        for d in "${location}"/L*/; do
+            d=${d%/}
+            echo "$d"
+        done | awk -F'[LTbk]' '{print $2, $3, $4, $5, $0}' \
+               | sort -n -k1,1 -k2,2 -k3,3 -k4,4 \
+               | awk '{print $5}'
+    )
+}
+
+group_ensembles_by_prefix() {
+    for ens in "${enslist[@]}"; do
+        dirname=$(basename "$ens")
+        prefix=${dirname%%k*}
+        group_map["$prefix"]+="${dirname}"$'\n'
+
+        if [[ -z "${prefix_seen[$prefix]}" ]]; then
+            prefix_list+=("$prefix")
+            prefix_seen["$prefix"]=1
+        fi
+    done
+}
+
+rewrite_ids_by_group() {
+    true_id=0
+    for ((gidx=0; gidx<${#prefix_list[@]}; gidx++)); do
+        prefix="${prefix_list[gidx]}"
+        echo "========== Group $gidx: $prefix =========="
+        echo
+
+        sorted_list=$(echo "${group_map[$prefix]}" \
+            | sed '/^$/d' \
+            | awk -F'[LTbk]' '{print $2, $3, $4, $5, $0}' \
+            | sort -n -k1,1 -k2,2 -k3,3 -k4,4 \
+            | awk '{print $5}')
+
+        while IFS= read -r dirname; do
+            [[ -z "$dirname" ]] && continue
+            ens_path="${location}/${dirname}"
+            if [[ -f "$ens_path/header.info" ]]; then
+                sed -E "s/^ID [0-9]+/ID $true_id/" "$ens_path/header.info" > "$ens_path/header.info.tmp"
+                mv "$ens_path/header.info.tmp" "$ens_path/header.info"
+                cat "$ens_path/header.info"
+                ((true_id++))
+            else
+                echo "⚠️  Missing: $ens_path/header.info"
+            fi
+        done <<< "$sorted_list"
+
+        echo
+    done
+}

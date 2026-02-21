@@ -1,0 +1,215 @@
+#!/bin/bash
+# scripts/common.shlib
+# shellcheck shell=bash
+
+declare -A ABBREV_MAP=(
+    ["pbp.dat"]="TrM1"
+    ["trdinv2.dat"]="TrM2"
+    ["trdinv3.dat"]="TrM3"
+    ["trdinv4.dat"]="TrM4"
+    ["plaq.dat"]="Plaq"
+    ["ploop.dat"]="Loop"
+    ["rect.dat"]="Rect"
+)
+# shellcheck disable=SC2034
+ABBREV_KEYS=(pbp.dat trdinv2.dat trdinv3.dat trdinv4.dat plaq.dat ploop.dat rect.dat)
+
+declare -A ABBREV_MAP_REV
+for k in "${!ABBREV_MAP[@]}"; do
+    v="${ABBREV_MAP[$k]}"
+    ABBREV_MAP_REV["$v"]="$k"
+done
+
+function parse_abbreviation() {
+    local input="$1"
+    local -n x_array_ref=$2
+    local -n y_string_ref=$3
+
+    local tokens
+    IFS='-' read -r -a tokens <<< "$input"
+
+    if (( ${#tokens[@]} == 0 )); then
+        echo "# Empty abbreviation input." >&2
+        return 1
+    fi
+
+    local last="${tokens[-1]}"
+    if [[ -n "${ABBREV_MAP_REV[$last]}" ]]; then
+        y_string_ref="${ABBREV_MAP_REV[$last]}"
+    else
+        # shellcheck disable=SC2034
+        y_string_ref="$last"
+    fi
+
+    unset 'tokens[-1]'
+    x_array_ref=()
+    for code in "${tokens[@]}"; do
+        if [[ -n "${ABBREV_MAP_REV[$code]}" ]]; then
+            x_array_ref+=("${ABBREV_MAP_REV[$code]}")
+        else
+            x_array_ref+=("$code")
+            echo "# Unknown abbreviation: $code" >&2
+        fi
+    done
+}
+
+function encode_abbreviation() {
+    # shellcheck disable=SC2178
+    local -n x_array_ref=$1
+    local y_string="$2"
+    local encoded_parts=()
+
+    # Append each X name's abbreviation
+    for name in "${x_array_ref[@]}"; do
+        if [[ -n "${ABBREV_MAP[$name]}" ]]; then
+            encoded_parts+=("${ABBREV_MAP[$name]}")
+        else
+            echo "# Unknown abbreviation for name: $name" >&2
+            encoded_parts+=("$name")
+        fi
+    done
+
+    # Add Y string
+    if [[ -n "${ABBREV_MAP[$y_string]}" ]]; then
+        encoded_parts+=("${ABBREV_MAP[$y_string]}")
+    else
+        encoded_parts+=("$y_string")
+    fi
+
+    # Join with dash
+    local result
+    result=$(IFS=-; echo "${encoded_parts[*]}")
+    echo "$result"
+}
+
+# -------------------------------
+# # Usage example:
+# declare -a X_array=(plaq rect)
+# Y_string=4
+# encoded=$(encode_abbreviation X_array "$Y_string")
+# echo "Encoded: $encoded"  # Output: QR4
+# -------------------------------
+
+# -------------------------------
+# # Key comments:
+# # - This function is the exact reverse of parse_abbreviation.
+# # - It is useful for generating compact keys or filenames from decoded arrays.
+# # - If a name is not found in ABBREV_MAP, a warning is printed to stderr.
+# # - The function returns the encoded string via echo.
+# -------------------------------
+
+echorun()
+{
+    {
+        date
+        echo "$1"
+        $1
+    } >> "$2"
+}
+
+echorunvv()
+{
+    date
+    echo "$1"
+    $1
+}
+
+parse_model_tag() {
+    local model="$1"
+    case "$model" in
+        LightGBM)  echo "GBM" ;;
+        Lasso)     echo "LAS" ;;
+        Ridge)     echo "RID" ;;
+        Random)    echo "RGM" ;;
+        Baseline)  echo "BAS" ;;
+        MiddleGBM) echo "MDG" ;;
+        PyGBM)     echo "PYG" ;;
+        *)
+            echo "[ERROR] Unsupported model: $model" >&2
+            exit 1
+            ;;
+    esac
+}
+
+parse_ensemble_info() {
+    local location="$1"
+
+    cd "${location}" || exit
+
+    mapfile -t ens_arr < <(
+        for d in L*/; do
+            d=${d%/}
+            echo "$d"
+        done | awk -F'[LTbk]' '{print $2, $3, $4, $5, $0}' \
+               | sort -n -k1,1 -k2,2 -k3,3 -k4,4 \
+               | awk '{print $5}'
+    )
+
+    nens=${#ens_arr[@]}
+    declare -g -a L T b k suffix
+
+    for ((iens=0; iens<nens; iens++)); do
+        local name="${ens_arr[$iens]}"
+        local grep_cmd="grep -oP"
+        if [[ "$(uname)" == "Darwin" ]]; then
+            grep_cmd="ggrep -oP"
+        fi
+
+        # shellcheck disable=SC2034
+        L[iens]=$($grep_cmd '(?<=L).*(?=T)' <<< "$name")
+        # shellcheck disable=SC2034
+        T[iens]=$($grep_cmd '(?<=T).*(?=b)' <<< "$name")
+        # shellcheck disable=SC2034
+        b[iens]=$($grep_cmd '(?<=b).*(?=k)' <<< "$name")
+        k[iens]=$($grep_cmd '(?<=k).*(?=_)' <<< "$name")
+        [[ -z "${k[iens]}" ]] && k[iens]=$($grep_cmd '(?<=k).*' <<< "$name")
+        suffix[iens]=$($grep_cmd '(?<=_).*' <<< "$name")
+        [[ -n "${suffix[iens]}" ]] && suffix[iens]="_${suffix[iens]}"
+    done
+
+    # echo "${L[iens]} ${T[iens]} ${b[iens]}" >/dev/null
+
+    cd - >/dev/null || exit
+}
+
+parse_ensemble_info_zero_idx() {
+    local location="$1"
+
+    cd "${location}" || exit
+
+    mapfile -t ens_arr_zero_idx < <(
+        for d in L*/; do
+            d=${d%/}
+            echo "$d"
+        done | awk -F'[LTbk]' '{print $2, $3, $4, $5, $0}' \
+            | sort -n -k1,1 -k2,2 -k3,3 -k4,4 \
+            | awk '{print $5}' \
+            | grep -v '^$'
+    )
+
+    nens=${#ens_arr_zero_idx[@]}
+    declare -g -a L T b k suffix
+
+    for ((iens=0; iens<nens; iens++)); do
+        local name="${ens_arr_zero_idx[$iens]}"
+        local grep_cmd="grep -oP"
+        if [[ "$(uname)" == "Darwin" ]]; then
+            grep_cmd="ggrep -oP"
+        fi
+
+        # shellcheck disable=SC2034
+        L[iens]=$($grep_cmd '(?<=L).*(?=T)' <<< "$name")
+        # shellcheck disable=SC2034
+        T[iens]=$($grep_cmd '(?<=T).*(?=b)' <<< "$name")
+        # shellcheck disable=SC2034
+        b[iens]=$($grep_cmd '(?<=b).*(?=k)' <<< "$name")
+        k[iens]=$($grep_cmd '(?<=k).*(?=_)' <<< "$name")
+        [[ -z "${k[iens]}" ]] && k[iens]=$($grep_cmd '(?<=k).*' <<< "$name")
+        suffix[iens]=$($grep_cmd '(?<=_).*' <<< "$name")
+        [[ -n "${suffix[iens]}" ]] && suffix[iens]="_${suffix[iens]}"
+    done
+
+    # echo "${L[iens]} ${T[iens]} ${b[iens]}" >/dev/null
+
+    cd - >/dev/null || exit
+}

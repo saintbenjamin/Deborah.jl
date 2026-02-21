@@ -1,0 +1,32 @@
+[data]
+location = "./nf4_clover_wilson_finiteT"
+ensemble = "L8T4b1.60k13570"
+analysis_header = "analysis"
+X = ["plaq.dat", "rect.dat"]
+Y = "pbp.dat"
+model = "LightGBM"
+read_column_X = [1,1]
+read_column_Y = 1
+index_column = 3
+LBP = 30
+TRP = 30
+IDX_shift = 0
+dump_X = false
+use_abbreviation = false
+
+[bootstrap]
+ranseed = 850528
+N_bs = 1000
+blk_size = 1
+
+[jackknife]
+bin_size = 1
+
+[abbreviation]
+"pbp.dat"     = "TrM1"
+"trdinv2.dat" = "TrM2"
+"trdinv3.dat" = "TrM3"
+"trdinv4.dat" = "TrM4"
+"plaq.dat"    = "Plaq"
+"ploop.dat"   = "Loop"
+"rect.dat"    = "Rect"
