@@ -5,10 +5,7 @@
 The full API reference and user documentation for **Deborah.jl** is
 automatically generated using Documenter.jl and hosted online:
 
-👉 https://saintbenjamin.github.io/Deborah.jl/stable/
-
-The `stable` documentation corresponds to tagged releases
-(e.g. `v1.0.0`), while development versions may appear under `dev/`.
+👉 https://saintbenjamin.github.io/Deborah.jl/
 
 ## Deborah.jl
 
