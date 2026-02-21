@@ -29,6 +29,7 @@ jobs:
         with:
           python-version: "3.x"
           cache: "pip"
+          cache-dependency-path: doc/requirements.txt
 
       - name: Install matplotlib for PyCall/PyPlot
         run: |
