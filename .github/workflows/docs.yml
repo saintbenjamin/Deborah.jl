@@ -3,6 +3,8 @@ name: Build and deploy Deborah.jl docs
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - "v*"
   workflow_dispatch:
 
 jobs:
@@ -13,8 +15,10 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repo (full history + tags)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Julia
         uses: julia-actions/setup-julia@v2
