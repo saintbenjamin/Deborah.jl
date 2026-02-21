@@ -57,21 +57,21 @@ that includes `subset` and `overall_name`.
 # Keyword Arguments
 - `subset`: Select which subset to compare. Allowed values (case-insensitive):
     - `"all"`: (default) Use the original combined behavior:
-        - OG = vcat(Y_tr, Y_bc, Y_ul)
-        - ML = vcat(Y_tr, Y_bc, YP_ul)
+        - OG = `vcat(Y_tr, Y_bc, Y_ul)`
+        - ML = `vcat(Y_tr, Y_bc, YP_ul)`
     - `"tr"`: Training-only comparison:
-        - OG = Y_tr
-        - ML = Y_tr
+        - OG = `Y_tr`
+        - ML = `Y_tr`
       (This is expected to match identically by construction.)
     - `"bc"`: Bias-correction-only comparison:
-        - OG = Y_bc
-        - ML = YP_bc
+        - OG = `Y_bc`
+        - ML = `YP_bc`
       (Requires `trace_data["YP_bc"]` to exist.)
     - `"ul"`: Unlabeled-only comparison:
-        - OG = Y_ul
-        - ML = YP_ul
-- `x_min`: If provided, forces the histogram minimum x-range (values below are discarded).
-- `x_max`: If provided, forces the histogram maximum x-range (values above are discarded).
+        - OG = `Y_ul`
+        - ML = `YP_ul`
+- `x_min`: If provided, forces the histogram minimum ``x``-range (values below are discarded).
+- `x_max`: If provided, forces the histogram maximum ``x``-range (values above are discarded).
 - `print_clipping`: If `true`, prints a short report of discarded points due to clipping.
 - `clipping_report_prefix`: Optional prefix prepended to clipping report lines (useful in batch logs).
 - `outfile`: Output filename for the tab-delimited bin-count table. This `.dat` file is always written.
@@ -85,17 +85,17 @@ that includes `subset` and `overall_name`.
 # Behavior
 - First, selects the datasets to compare based on `subset`:
     - `subset="all"`:
-        - OG = vcat(Y_tr, Y_bc, Y_ul)
-        - ML = vcat(Y_tr, Y_bc, YP_ul)
+        - OG = `vcat(Y_tr, Y_bc, Y_ul)`
+        - ML = `vcat(Y_tr, Y_bc, YP_ul)`
     - `subset="tr"`:
-        - OG = Y_tr
-        - ML = Y_tr
+        - OG = `Y_tr`
+        - ML = `Y_tr`
     - `subset="bc"`:
-        - OG = Y_bc
-        - ML = YP_bc
+        - OG = `Y_bc`
+        - ML = `YP_bc`
     - `subset="ul"`:
-        - OG = Y_ul
-        - ML = YP_ul
+        - OG = `Y_ul`
+        - ML = `YP_ul`
 - Determines a common plotting/binning range:
     - If `x_min`/`x_max` are both `nothing`, uses data-driven min/max from both datasets.
     - Otherwise uses the user-specified bound(s) and fills any missing side from the data-driven bound.
