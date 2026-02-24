@@ -46,13 +46,13 @@ If you found this library to be useful in academic work, then please cite:
 ```bibtex
 @misc{Choi:2026zen,
     author       = {Benjamin J. Choi},
-    title        = {\href{https://doi.org/10.5281/zenodo.18753759}{saintbenjamin/Deborah.jl: Deborah.jl}},
+    title        = {\href{https://doi.org/10.5281/zenodo.1875546}{saintbenjamin/Deborah.jl: Deborah.jl}},
     month        = feb,
     year         = 2026,
     note         = {If you use this software, please cite it as below.},
     publisher    = {Zenodo},
     version      = {v1.0.3},
-    doi          = {10.5281/zenodo.18753759}
+    doi          = {10.5281/zenodo.1875546}
 }
 ```
 
