@@ -31,7 +31,7 @@ SCRIPT_DIR=$(get_script_dir)
 [ -f "${SCRIPT_DIR}/utils-Miriam.shlib" ] && source "${SCRIPT_DIR}/utils-Miriam.shlib"
 
 # shellcheck disable=SC2034
-location=./nf4_clover_wilson_finiteT
+location=./sample/nf4_clover_wilson_finiteT
 
 # shellcheck disable=SC2034
 declare -A group_map

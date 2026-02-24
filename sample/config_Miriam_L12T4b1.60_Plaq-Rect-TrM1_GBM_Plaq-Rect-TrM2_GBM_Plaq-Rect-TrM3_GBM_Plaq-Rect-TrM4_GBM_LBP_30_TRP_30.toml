@@ -1,12 +1,12 @@
 [data]
-location = "./nf4_clover_wilson_finiteT"
-multi_ensemble = "L8T4b1.60"
+location = "./sample/nf4_clover_wilson_finiteT"
+multi_ensemble = "L12T4b1.60"
 ensembles = [
-    "L8T4b1.60k13570",
-    "L8T4b1.60k13575",
-    "L8T4b1.60k13580",
-    "L8T4b1.60k13585",
-    "L8T4b1.60k13590",
+    "L12T4b1.60k13575",
+    "L12T4b1.60k13577",
+    "L12T4b1.60k13580",
+    "L12T4b1.60k13582",
+    "L12T4b1.60k13585",
 ]
 analysis_header = "analysis"
 TrM1_X = ["plaq.dat","rect.dat"]
@@ -39,17 +39,17 @@ dump_original = false
 use_abbreviation = true
 
 [input_meta]
-ns = 8
+ns = 12
 nt = 4
 nf = 4
 beta = 1.60
 csw = 2.065
 kappa_list = [
     0.13570,
-    0.13575,
+    0.13577,
     0.13580,
-    0.13585,
-    0.13590
+    0.13582,
+    0.13585
 ]
 
 [solver]
@@ -63,6 +63,7 @@ bin_size = 1
 ranseed = 850528
 N_bs = 1000
 blk_size = 1
+method = "nonoverlapping"
 
 [trajectory]
 nkappaT = 10

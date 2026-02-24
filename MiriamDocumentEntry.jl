@@ -11,7 +11,7 @@
 # ----------------------------------------------------------------------------
 # For development: auto-reload on source file changes
 # ----------------------------------------------------------------------------
-using Revise
+# using Revise
 import Deborah.MiriamDocument.MiriamDocumentRunner; flush(stdout); flush(stderr)
 
 # ----------------------------------------------------------------------------

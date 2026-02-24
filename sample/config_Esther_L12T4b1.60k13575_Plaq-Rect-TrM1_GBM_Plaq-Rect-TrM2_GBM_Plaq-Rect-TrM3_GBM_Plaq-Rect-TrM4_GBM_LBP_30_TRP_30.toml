@@ -1,6 +1,6 @@
 [data]
-location = "./nf4_clover_wilson_finiteT"
-ensemble = "L8T4b1.60k13570"
+location = "./sample/nf4_clover_wilson_finiteT"
+ensemble = "L12T4b1.60k13575"
 analysis_header = "analysis"
 TrM1_X = ["plaq.dat","rect.dat"]
 TrM1_Y = "pbp.dat"
@@ -31,16 +31,17 @@ TRP = 30
 use_abbreviation = true
 
 [input_meta]
-ns = 8
+ns = 12
 nt = 4
 nf = 4
 beta = 1.60
-kappa = 0.13570
+kappa = 0.13575
 
 [bootstrap]
 ranseed = 850528
 N_bs = 1000
 blk_size = 1
+method = "nonoverlapping"
 
 [jackknife]
 bin_size = 1

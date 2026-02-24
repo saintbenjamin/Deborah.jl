@@ -129,7 +129,7 @@ function plot_reweighting_pyplot(
     cumulant_P2       = new_dict[(ykey,     :avg, :RWP2, interpolate)][i, j]
     err_cumulant_P2   = new_dict[(ykey,     :err, :RWP2, interpolate)][i, j]
 
-    fig, ax = PyPlot.subplots(figsize=(8, 6), dpi=500)
+    fig, ax = PyPlot.subplots(figsize=(5.6, 5.0), dpi=500)
 
     xkey = :kappa
     rwtag_ORG, ytag_ORG = :RWBS, :Y_BS

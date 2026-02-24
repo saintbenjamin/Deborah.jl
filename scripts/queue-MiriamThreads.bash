@@ -2,7 +2,7 @@
 program=MiriamThreadsEntry.jl
 batch_size=30
 
-location=nf4_clover_wilson_finiteT
+location=sample/nf4_clover_wilson_finiteT
 ranseed="850528"
 N_bs="1000"
 bootstrap_method="nonoverlapping"

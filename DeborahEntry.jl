@@ -11,7 +11,7 @@
 # ----------------------------------------------------------------------------
 # For development: auto-reload on source file changes
 # ----------------------------------------------------------------------------
-using Revise
+# using Revise
 import Deborah.DeborahCore.DeborahRunner; flush(stdout); flush(stderr)
 
 # ----------------------------------------------------------------------------

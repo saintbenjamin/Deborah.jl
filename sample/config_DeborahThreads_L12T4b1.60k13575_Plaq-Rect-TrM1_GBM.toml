@@ -1,8 +1,8 @@
 [data]
 labels = ["5","10","15","20","25","30","35","40","45","50"]
 trains = ["10","20","30","40","50","60","70","80","90"]
-location = "./nf4_clover_wilson_finiteT"
-ensemble = "L8T4b1.60k13570"
+location = "./sample/nf4_clover_wilson_finiteT"
+ensemble = "L12T4b1.60k13575"
 analysis_header = "analysis"
 X = ["plaq.dat","rect.dat"]
 Y = "pbp.dat"
@@ -18,6 +18,7 @@ use_abbreviation = true
 ranseed = 850528
 N_bs = 1000
 blk_size = 1
+method = "nonoverlapping"
 
 [jackknife]
 bin_size = 1

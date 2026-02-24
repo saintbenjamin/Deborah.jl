@@ -1,9 +1,6 @@
 doc/build/*
 doc/build-pdf/*
-nf4_clover_wilson_finiteT
-*.tar.gz
-*.dat
-*.log
+/nf4_clover_wilson_finiteT
 /*.pdf
 ipynb/*.pdf
 /results_*.jld2
