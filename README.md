@@ -2,6 +2,8 @@
 
 ## 🔬 Deborah.jl
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18753758.svg)](https://doi.org/10.5281/zenodo.18753758)
+
 **Deborah.jl** is a machine-learning–assisted analysis framework for
 bias-corrected cumulant estimation and multi-ensemble reweighting
 workflows in lattice QCD.  
@@ -44,15 +46,14 @@ The `stable` documentation corresponds to tagged releases
 If you found this library to be useful in academic work, then please cite:
 
 ```bibtex
-@misc{Choi:2026zen,
+@misc{Choi:2026deborah,
     author       = {Benjamin J. Choi},
-    title        = {\href{https://doi.org/10.5281/zenodo.18755146}{saintbenjamin/Deborah.jl: Deborah.jl}},
+    title        = {\href{https://doi.org/10.5281/zenodo.18753758}{Deborah.jl}},
     month        = feb,
     year         = 2026,
     note         = {If you use this software, please cite it as below.},
     publisher    = {Zenodo},
-    version      = {v1.0.3},
-    doi          = {10.5281/zenodo.18755146}
+    doi          = {10.5281/zenodo.18753758}
 }
 ```
 
