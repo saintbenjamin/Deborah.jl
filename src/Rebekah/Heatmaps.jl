@@ -10,8 +10,9 @@
 
 module Heatmaps
 
-import PyPlot
-import PyCall
+import ..PyPlot
+import ..PyCall
+
 import ..Sarah.JobLoggerTools
 
 """

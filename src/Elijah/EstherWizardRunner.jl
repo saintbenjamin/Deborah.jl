@@ -10,8 +10,8 @@
 
 module EstherWizardRunner
 
-import TOML
-import REPL.TerminalMenus
+import ..TOML
+import ..REPL.TerminalMenus
 
 """
     run_EstherWizard() -> Dict{String, Any}

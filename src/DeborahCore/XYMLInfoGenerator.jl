@@ -10,7 +10,8 @@
 
 module XYMLInfoGenerator
 
-import Printf: @printf, @sprintf
+import ..Printf: @printf, @sprintf
+
 import ..Sarah.JobLoggerTools
 
 """

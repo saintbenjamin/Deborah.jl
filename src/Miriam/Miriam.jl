@@ -70,6 +70,13 @@ julia> run_Miriam("config_Miriam.toml")
 """
 module Miriam
 
+import ..TOML
+import ..StatsBase
+import ..Printf
+import ..OrderedCollections
+import ..NLsolve
+import ..Statistics
+
 using ..Sarah
 
 include("TOMLConfigMiriam.jl")

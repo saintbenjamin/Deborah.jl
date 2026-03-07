@@ -10,7 +10,8 @@
 
 module MultiEnsembleLoader
 
-import StatsBase
+import ..StatsBase
+
 import ..Sarah.JobLoggerTools
 import ..Sarah.DataLoader
 import ..TOMLConfigMiriam

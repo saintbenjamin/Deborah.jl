@@ -10,7 +10,8 @@
 
 module PXvsBSPlotter
 
-import PyPlot
+import ..PyPlot
+
 import ..Sarah.JobLoggerTools
 
 """

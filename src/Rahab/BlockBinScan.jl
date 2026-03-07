@@ -10,10 +10,11 @@
 
 module BlockBinScan
 
-import PyPlot
-import ProgressMeter
-import Random
-import Statistics
+import ..PyPlot
+import ..ProgressMeter
+import ..Random
+import ..Statistics
+
 import ..Sarah.Bootstrap
 import ..Sarah.Jackknife
 import ..Sarah.JobLoggerTools

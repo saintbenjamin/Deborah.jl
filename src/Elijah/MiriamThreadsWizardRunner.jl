@@ -10,8 +10,8 @@
 
 module MiriamThreadsWizardRunner
 
-import TOML
-import REPL.TerminalMenus
+import ..TOML
+import ..REPL.TerminalMenus
 
 """
     run_MiriamThreadsWizard() -> Dict{String, Any}

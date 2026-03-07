@@ -93,6 +93,13 @@ julia> JLD2SaverRebekahMiriam.save_miriam_results("out/miriam_results.jld2", leg
 """
 module RebekahMiriam
 
+import ..PyPlot
+import ..PyCall
+import ..Printf
+import ..JLD2
+import ..PlotlyJS
+import ..TOML
+
 using ..Sarah
 using ..Rebekah
 

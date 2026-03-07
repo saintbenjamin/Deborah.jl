@@ -71,6 +71,9 @@ julia> run_Deborah_Esther_Miriam("config_Miriam.toml")
 """
 module DeborahEstherMiriam
 
+import ..TOML
+import ..OrderedCollections
+
 using ..Sarah
 using ..Esther
 using ..Miriam

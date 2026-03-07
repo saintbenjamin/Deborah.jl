@@ -10,7 +10,8 @@
 
 module ReweightingCurveBundle
 
-import Printf: @sprintf, @printf
+import ..Printf: @sprintf, @printf
+
 import ..Sarah.JobLoggerTools
 import ..Sarah.Bootstrap
 import ..Sarah.SeedManager

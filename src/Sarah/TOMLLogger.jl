@@ -10,7 +10,7 @@
 
 module TOMLLogger
 
-import OrderedCollections
+import ..OrderedCollections
 
 """
     append_section_to_toml(

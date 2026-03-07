@@ -10,8 +10,8 @@
 
 module EstherThreadsWizardRunner
 
-import TOML
-import REPL.TerminalMenus
+import ..TOML
+import ..REPL.TerminalMenus
 
 """
     run_EstherThreadsWizard() -> Dict{String, Any}

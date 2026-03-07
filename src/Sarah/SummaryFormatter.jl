@@ -10,7 +10,8 @@
 
 module SummaryFormatter
 
-import Printf: @sprintf
+import ..Printf: @sprintf
+
 import ..JobLoggerTools
 import ..AvgErrFormatter
 import ..Jackknife

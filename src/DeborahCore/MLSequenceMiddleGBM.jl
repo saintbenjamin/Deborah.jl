@@ -10,12 +10,13 @@
 
 module MLSequenceMiddleGBM
 
-import Printf: @sprintf
-import OrderedCollections
-import MLJ
-import MLJBase
-import LightGBM.MLJInterface: LGBMRegressor; flush(stdout); flush(stderr)
-import PyPlot
+import ..Printf: @sprintf
+import ..OrderedCollections
+import ..MLJ
+import ..MLJBase
+import ..LightGBM.MLJInterface: LGBMRegressor; flush(stdout); flush(stderr)
+import ..PyPlot
+
 import ..Rebekah.PyPlotLaTeX
 import ..Sarah.JobLoggerTools
 import ..Sarah.TOMLLogger

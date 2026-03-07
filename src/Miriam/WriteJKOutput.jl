@@ -10,7 +10,8 @@
 
 module WriteJKOutput
 
-import Printf: @sprintf
+import ..Printf: @sprintf
+
 import ..Sarah.Jackknife
 import ..Ensemble
 import ..EnsembleUtils

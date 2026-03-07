@@ -10,10 +10,11 @@
 
 module Bootstrap
 
-import Random
-import Statistics
-import StatsBase
-import Distributions
+import ..Random
+import ..Statistics
+import ..StatsBase
+import ..Distributions
+
 import ..JobLoggerTools
 
 """

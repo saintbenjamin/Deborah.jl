@@ -10,10 +10,11 @@
 
 module DeborahThreadsRunner
 
-import TOML
-import OrderedCollections
-import Dates
-import Base.Threads: @spawn, nthreads
+import ..TOML
+import ..OrderedCollections
+import ..Dates
+import ..Base.Threads: @spawn, nthreads
+
 import ..Sarah.JobLoggerTools
 import ..Sarah.StringTranscoder
 import ..Sarah.NameParser

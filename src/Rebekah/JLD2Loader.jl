@@ -10,7 +10,8 @@
 
 module JLD2Loader
 
-import JLD2
+import ..JLD2
+
 import ..Sarah.JobLoggerTools
 
 """

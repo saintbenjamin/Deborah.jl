@@ -10,9 +10,10 @@
 
 module BaselineSequence
 
-import Random
-import Statistics
-import Distributions
+import ..Random
+import ..Statistics
+import ..Distributions
+
 import ..Sarah.JobLoggerTools
 import ..Sarah.SeedManager
 import ..Sarah.DatasetPartitioner

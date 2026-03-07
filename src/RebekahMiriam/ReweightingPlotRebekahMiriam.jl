@@ -10,8 +10,9 @@
 
 module ReweightingPlotRebekahMiriam
 
-import PyPlot
-import PlotlyJS
+import ..PyPlot
+import ..PlotlyJS
+
 import ..Sarah.JobLoggerTools
 
 """

@@ -56,6 +56,11 @@ julia> run_DeborahThreads("config_DeborahThreads.toml")
 """
 module DeborahThreads
 
+import ..TOML
+import ..OrderedCollections
+import ..Dates
+import ..Base.Threads
+
 using ..Sarah
 using ..DeborahCore
 

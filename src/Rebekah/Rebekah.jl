@@ -83,6 +83,10 @@ julia> plot_PX_BS_vs_trains("TrM1", "Y_BS", "P1", "P2", 20, new_dict, trains, la
 """
 module Rebekah
 
+import ..JLD2
+import ..PyPlot
+import ..PyCall
+
 using ..Sarah
 
 include("SummaryLoader.jl")

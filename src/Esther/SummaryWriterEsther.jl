@@ -10,7 +10,8 @@
 
 module SummaryWriterEsther
 
-import Printf: @printf
+import ..Printf: @printf
+
 import ..Sarah.NameParser
 import ..TOMLConfigEsther
 

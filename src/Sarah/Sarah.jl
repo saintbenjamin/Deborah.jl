@@ -79,6 +79,16 @@ julia> SummaryFormatter.print_jackknife_average_error_from_raw(raw_arr, 20, "con
 """
 module Sarah
 
+import ..Printf
+import ..Dates
+import ..OrderedCollections
+import ..StatsBase
+import ..DelimitedFiles
+import ..Random
+import ..Statistics
+import ..Distributions
+import ..TOML
+
 include("JobLoggerTools.jl")
 include("TOMLLogger.jl")
 include("StringTranscoder.jl")

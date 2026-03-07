@@ -10,7 +10,8 @@
 
 module SummaryLoaderRebekahMiriam
 
-import TOML
+import ..TOML
+
 import ..Sarah.JobLoggerTools
 
 """

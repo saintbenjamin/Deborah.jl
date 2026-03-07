@@ -72,6 +72,13 @@ julia> Rahab.ZeroTemperatureScale.fit_kappa_c_beta(beta_vals, kappa_vals)
 """
 module Rahab
 
+import ..DelimitedFiles
+import ..Statistics
+import ..PyPlot
+import ..Printf
+import ..ProgressMeter
+import ..Random
+
 using ..Sarah
 
 include("CorrPlot.jl")

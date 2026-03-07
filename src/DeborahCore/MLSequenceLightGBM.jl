@@ -10,11 +10,12 @@
 
 module MLSequenceLightGBM
 
-import Printf: @sprintf
-import OrderedCollections
-import MLJ
-import MLJBase
-import LightGBM.MLJInterface: LGBMRegressor; flush(stdout); flush(stderr)
+import ..Printf: @sprintf
+import ..OrderedCollections
+import ..MLJ
+import ..MLJBase
+import ..LightGBM.MLJInterface: LGBMRegressor; flush(stdout); flush(stderr)
+
 import ..Sarah.JobLoggerTools
 import ..Sarah.TOMLLogger
 import ..Sarah.DatasetPartitioner

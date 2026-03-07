@@ -10,8 +10,8 @@
 
 module MiriamWizardRunner
 
-import TOML
-import REPL.TerminalMenus
+import ..TOML
+import ..REPL.TerminalMenus
 
 """
     run_MiriamWizard() -> Dict{String, Any}

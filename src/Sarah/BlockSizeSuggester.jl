@@ -10,9 +10,10 @@
 
 module BlockSizeSuggester
 
-import Printf: @sprintf
-import OrderedCollections
-import Statistics
+import ..Printf: @sprintf
+import ..OrderedCollections
+import ..Statistics
+
 import ..DatasetPartitioner
 import ..JobLoggerTools
 import ..TOMLLogger

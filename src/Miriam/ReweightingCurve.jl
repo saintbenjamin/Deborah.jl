@@ -10,7 +10,8 @@
 
 module ReweightingCurve
 
-import Printf: @sprintf, @printf
+import ..Printf: @sprintf, @printf
+
 import ..Sarah.JobLoggerTools
 import ..Sarah.Jackknife
 import ..Ensemble

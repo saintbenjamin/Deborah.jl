@@ -120,6 +120,32 @@ julia> run_MiriamThreads("config_MiriamThreads.toml")
 """
 module Deborah
 
+import Printf
+import Dates
+import OrderedCollections
+import StatsBase
+import DelimitedFiles
+import Random
+import Statistics
+import Distributions
+import TOML
+import JLD2
+import PyPlot
+import PyCall
+import MLJ
+import MLJBase
+import MLJLinearModels
+import LightGBM
+# import LightGBM.MLJInterface
+import DataFrames
+import NLsolve
+import Base.Threads
+import PlotlyJS
+import DelimitedFiles
+import ProgressMeter
+import REPL
+# import REPL.TerminalMenus
+
 include("Sarah/Sarah.jl")
 include("Rebekah/Rebekah.jl")
 
@@ -168,8 +194,8 @@ include("Rahab/Rahab.jl")
 
 using .Rahab
 
-include("EstherDocument/EstherDocument.jl")
 include("DeborahDocument/DeborahDocument.jl")
+include("EstherDocument/EstherDocument.jl")
 include("MiriamDocument/MiriamDocument.jl")
 
 using .DeborahDocument

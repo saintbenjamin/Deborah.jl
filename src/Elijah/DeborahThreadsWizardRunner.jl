@@ -10,8 +10,8 @@
 
 module DeborahThreadsWizardRunner
 
-import TOML
-import REPL.TerminalMenus
+import ..TOML
+import ..REPL.TerminalMenus
 
 """
     run_DeborahThreadsWizard() -> Dict{String, Any}

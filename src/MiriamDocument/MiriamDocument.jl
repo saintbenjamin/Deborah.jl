@@ -52,6 +52,8 @@ julia> run_MiriamDocument("config_MiriamDocument.toml")
 """
 module MiriamDocument
 
+import ..TOML
+
 using ..Sarah
 using ..RebekahMiriam
 

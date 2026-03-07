@@ -10,9 +10,10 @@
 
 module Reweighting
 
-import Printf: @sprintf
-import OrderedCollections
-import NLsolve
+import ..Printf: @sprintf
+import ..OrderedCollections
+import ..NLsolve
+
 import ..Sarah.JobLoggerTools
 import ..Sarah.TOMLLogger
 import ..Ensemble

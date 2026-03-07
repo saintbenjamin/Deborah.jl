@@ -10,7 +10,8 @@
 
 module TOMLConfigDeborah
 
-import TOML
+import ..TOML
+
 import ..Sarah.JobLoggerTools
 import ..Sarah.StringTranscoder
 

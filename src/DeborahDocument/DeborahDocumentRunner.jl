@@ -10,8 +10,8 @@
 
 module DeborahDocumentRunner
 
+import ..TOML
 
-import TOML
 import ..Sarah.JobLoggerTools
 import ..Sarah.StringTranscoder
 import ..Sarah.NameParser

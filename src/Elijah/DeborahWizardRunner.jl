@@ -10,8 +10,8 @@
 
 module DeborahWizardRunner
 
-import TOML
-import REPL.TerminalMenus
+import ..TOML
+import ..REPL.TerminalMenus
 
 """
     run_DeborahWizard() -> Dict{String, Any}

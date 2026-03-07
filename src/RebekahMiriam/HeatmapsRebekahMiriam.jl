@@ -10,9 +10,10 @@
 
 module HeatmapsRebekahMiriam
 
-import PyPlot
-import PyCall
-import Printf: @sprintf
+import ..PyPlot
+import ..PyCall
+import ..Printf: @sprintf
+
 import ..Sarah.JobLoggerTools
 
 """

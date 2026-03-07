@@ -10,8 +10,9 @@
 
 module ZeroTemperatureScale
 
-import PyPlot
-import Printf: @sprintf
+import ..PyPlot
+import ..Printf: @sprintf
+
 import ..Sarah.AvgErrFormatter
 import ..Sarah.JobLoggerTools
 

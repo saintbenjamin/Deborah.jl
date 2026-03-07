@@ -10,7 +10,8 @@
 
 module DataLoader
 
-import DelimitedFiles
+import ..DelimitedFiles
+
 import ..JobLoggerTools
 
 """

@@ -10,7 +10,8 @@
 
 module SeedManager
 
-import StatsBase
+import ..StatsBase
+
 import ..JobLoggerTools
 
 """

@@ -58,6 +58,8 @@ julia> run_EstherDocument("config_EstherDocument.toml")
 """
 module EstherDocument
 
+import ..TOML
+
 using ..Sarah
 using ..Rebekah
 

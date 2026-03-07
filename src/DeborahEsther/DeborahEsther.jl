@@ -60,6 +60,9 @@ julia> run_Deborah_Esther("config_Esther.toml")
 """
 module DeborahEsther
 
+import ..TOML
+import ..OrderedCollections
+
 using ..Sarah
 using ..DeborahCore
 using ..Esther

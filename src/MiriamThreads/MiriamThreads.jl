@@ -67,6 +67,11 @@ julia> run_MiriamThreadsCheck("config_MiriamThreads.toml")
 """
 module MiriamThreads
 
+import ..TOML
+import ..OrderedCollections
+import ..Dates
+import ..Base.Threads
+
 using ..Sarah
 using ..DeborahEsther
 using ..DeborahEstherMiriam

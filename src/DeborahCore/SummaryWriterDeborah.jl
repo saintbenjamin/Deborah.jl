@@ -10,7 +10,8 @@
 
 module SummaryWriterDeborah
 
-import Printf: @printf
+import ..Printf: @printf
+
 import ..Sarah.NameParser
 import ..TOMLConfigDeborah
 

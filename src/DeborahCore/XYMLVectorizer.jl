@@ -10,7 +10,7 @@
 
 module XYMLVectorizer
 
-import Printf: @printf
+import ..Printf: @printf
 
 """
     mat_XY_ML(

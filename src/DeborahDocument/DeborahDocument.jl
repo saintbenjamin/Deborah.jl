@@ -52,6 +52,8 @@ julia> run_DeborahDocument("config_DeborahThreads.toml")
 """
 module DeborahDocument
 
+import ..TOML
+
 using ..Sarah
 using ..Rebekah
 

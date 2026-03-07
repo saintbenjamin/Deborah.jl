@@ -10,7 +10,8 @@
 
 module FileIO
 
-import Printf: @printf
+import ..Printf: @printf
+
 import ..Sarah.JobLoggerTools
 import ..TOMLConfigMiriam
 import ..PathConfigBuilderMiriam

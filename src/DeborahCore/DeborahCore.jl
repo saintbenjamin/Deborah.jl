@@ -85,6 +85,21 @@ julia> run_Deborah("config_Deborah.toml")
 """
 module DeborahCore
 
+import ..TOML
+import ..Printf
+import ..Random
+import ..Statistics
+import ..Distributions
+import ..OrderedCollections
+import ..MLJ
+import ..MLJBase
+import ..MLJLinearModels
+import ..LightGBM
+# import ..LightGBM.MLJInterface
+import ..PyPlot
+import ..PyCall
+import ..DataFrames
+
 using ..Sarah
 using ..Rebekah
 

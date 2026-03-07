@@ -10,8 +10,9 @@
 
 module BootstrapRunner
 
-import Random
-import Statistics
+import ..Random
+import ..Statistics
+
 import ..JobLoggerTools
 import ..DatasetPartitioner
 import ..SeedManager

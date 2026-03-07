@@ -10,7 +10,7 @@
 
 module HistogramOrigML
 
-import PyPlot
+import ..PyPlot
 
 """
     plot_histogram_orig_vs_ml(

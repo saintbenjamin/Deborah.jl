@@ -10,11 +10,12 @@
 
 module MLSequenceRidge
 
-import Printf: @sprintf
-import OrderedCollections
-import MLJ
-import MLJBase
-import MLJLinearModels: RidgeRegressor; flush(stdout); flush(stderr)
+import ..Printf: @sprintf
+import ..OrderedCollections
+import ..MLJ
+import ..MLJBase
+import ..MLJLinearModels: RidgeRegressor; flush(stdout); flush(stderr)
+
 import ..Sarah.JobLoggerTools
 import ..Sarah.TOMLLogger
 import ..Sarah.DatasetPartitioner

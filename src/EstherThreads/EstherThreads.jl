@@ -51,6 +51,11 @@ julia> run_EstherThreads("config_EstherThreads.toml")
 """
 module EstherThreads
 
+import ..TOML
+import ..OrderedCollections
+import ..Dates
+import ..Base.Threads
+
 using ..Sarah
 using ..DeborahEsther
 using ..Esther

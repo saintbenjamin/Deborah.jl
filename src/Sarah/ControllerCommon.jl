@@ -10,7 +10,7 @@
 
 module ControllerCommon
 
-import TOML
+import ..TOML
 
 """
     save_toml_file(

@@ -10,7 +10,8 @@
 
 module WriteBSOutput
 
-import Printf: @sprintf
+import ..Printf: @sprintf
+
 import ..Sarah.Bootstrap
 import ..Sarah.SeedManager
 import ..Ensemble

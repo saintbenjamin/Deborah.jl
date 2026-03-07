@@ -82,6 +82,9 @@ julia> run_Esther("config_Esther.toml")
 """
 module Esther
 
+import ..TOML
+import ..Printf
+
 using ..Sarah
 
 include("TOMLConfigEsther.jl")

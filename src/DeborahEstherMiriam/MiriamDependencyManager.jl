@@ -10,8 +10,9 @@
 
 module MiriamDependencyManager
 
-import TOML
-import OrderedCollections
+import ..TOML
+import ..OrderedCollections
+
 import ..Sarah.JobLoggerTools
 import ..Sarah.StringTranscoder
 import ..Sarah.NameParser

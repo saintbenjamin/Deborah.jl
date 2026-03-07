@@ -10,7 +10,8 @@
 
 module CumulantsBundle
 
-import Statistics
+import ..Statistics
+
 import ..Sarah.JobLoggerTools
 import ..Sarah.BlockSizeSuggester
 import ..Sarah.Bootstrap

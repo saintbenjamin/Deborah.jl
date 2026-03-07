@@ -10,10 +10,11 @@
 
 module CorrPlot
 
+import ..DelimitedFiles
+import ..Statistics
+import ..PyPlot
+
 import ..Sarah.JobLoggerTools
-import DelimitedFiles
-import Statistics
-import PyPlot
 
 """
     build_observables(

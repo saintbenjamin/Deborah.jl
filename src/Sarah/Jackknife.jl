@@ -10,7 +10,7 @@
 
 module Jackknife
 
-import Statistics
+import ..Statistics
 
 """
     make_jackknife_samples(

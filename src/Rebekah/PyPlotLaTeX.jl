@@ -10,7 +10,7 @@
 
 module PyPlotLaTeX
 
-import PyPlot
+import ..PyPlot
 
 """
     set_pyplot_latex_style(

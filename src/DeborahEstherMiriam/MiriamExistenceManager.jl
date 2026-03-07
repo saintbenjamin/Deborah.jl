@@ -10,7 +10,8 @@
 
 module MiriamExistenceManager
 
-import TOML
+import ..TOML
+
 import ..Sarah.JobLoggerTools
 import ..Sarah.NameParser
 import ..Sarah.StringTranscoder

@@ -75,6 +75,10 @@ julia> run_MiriamThreadsWizard()
 """
 module Elijah
 
+import ..TOML
+import ..REPL
+# import ..REPL.TerminalMenus
+
 include("DeborahWizardRunner.jl")
 include("EstherWizardRunner.jl")
 include("MiriamWizardRunner.jl")
