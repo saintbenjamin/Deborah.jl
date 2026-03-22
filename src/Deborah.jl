@@ -38,12 +38,8 @@ with a single function call, or generate configs interactively via [`REPL`](http
 - [`Deborah.Rahab`](@ref) — correlation matrices, histograms, histories/``\\tau_\\text{int}``, block/bin scans, ``T=0`` scaling
 
 # Exported Entry Points
-## Core single-run
+## Top-level single-run
 - [`Deborah.DeborahCore.DeborahRunner.run_Deborah`](@ref)
-- [`Deborah.Esther.EstherRunner.run_Esther`](@ref)
-- [`Deborah.Miriam.MiriamRunner.run_Miriam`](@ref)
-
-## Bridged pipelines
 - [`Deborah.DeborahEsther.DeborahEstherRunner.run_Deborah_Esther`](@ref)
 - [`Deborah.DeborahEstherMiriam.DeborahEstherMiriamRunner.run_Deborah_Esther_Miriam`](@ref)
 
@@ -66,6 +62,10 @@ with a single function call, or generate configs interactively via [`REPL`](http
 - [`Deborah.Elijah.EstherThreadsWizardRunner.run_EstherThreadsWizard`](@ref)
 - [`Deborah.Elijah.MiriamThreadsWizardRunner.run_MiriamThreadsWizard`](@ref)
 
+## Direct submodule runners (module-qualified)
+- [`Deborah.Esther.EstherRunner.run_Esther`](@ref)
+- [`Deborah.Miriam.MiriamRunner.run_Miriam`](@ref)
+
 # Minimal Usage ([`REPL`](https://docs.julialang.org/en/v1/stdlib/REPL/))
 ```julia
 julia> using Deborah
@@ -75,14 +75,14 @@ julia> run_DeborahWizard()
 julia> run_EstherWizard()
 julia> run_MiriamWizard()
 
-# Run single pipelines
+# Run top-level pipelines
 julia> run_Deborah("config_Deborah.toml")
-julia> run_Esther("config_Esther.toml")
-julia> run_Miriam("config_Miriam.toml")
-
-# Run bridged variants
 julia> run_Deborah_Esther("config_Esther.toml")
 julia> run_Deborah_Esther_Miriam("config_Miriam.toml")
+
+# Advanced: direct submodule runners
+julia> Deborah.Esther.EstherRunner.run_Esther("config_Esther.toml")
+julia> Deborah.Miriam.MiriamRunner.run_Miriam("config_Miriam.toml")
 
 # Run threaded variants
 julia> run_DeborahThreads("config_DeborahThreads.toml")

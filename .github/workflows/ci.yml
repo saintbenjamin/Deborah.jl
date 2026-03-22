@@ -1,0 +1,41 @@
+name: Run Deborah.jl tests
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: "1.12"
+
+      - name: Cache Julia packages
+        uses: julia-actions/cache@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+          cache: "pip"
+
+      - name: Install matplotlib for PyCall/PyPlot
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install matplotlib
+
+      - name: Instantiate package
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Run tests
+        run: julia --project=. -e 'using Pkg; Pkg.test(; coverage=true)'

@@ -28,7 +28,7 @@ Convert all values in a dictionary to strings.
 function parse_string_dict(
     dict_any::Dict{String,Any}
 )::Dict{String,String}
-    return Dict(k => String(v) for (k, v) in dict_any)
+    return Dict(k => string(v) for (k, v) in dict_any)
 end
 
 """
