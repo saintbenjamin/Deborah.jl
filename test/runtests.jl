@@ -1,5 +1,6 @@
 using Test
 using Random
+using TOML
 using Deborah
 
 const NameParser = Deborah.Sarah.NameParser
@@ -7,6 +8,14 @@ const StringTranscoder = Deborah.Sarah.StringTranscoder
 const DatasetPartitioner = Deborah.Sarah.DatasetPartitioner
 const SeedManager = Deborah.Sarah.SeedManager
 const BlockSizeSuggester = Deborah.Sarah.BlockSizeSuggester
+const TOMLConfigDeborah = Deborah.DeborahCore.TOMLConfigDeborah
+const PathConfigBuilderDeborah = Deborah.DeborahCore.PathConfigBuilderDeborah
+const TOMLConfigEsther = Deborah.Esther.TOMLConfigEsther
+const PathConfigBuilderEsther = Deborah.Esther.PathConfigBuilderEsther
+const TOMLConfigMiriam = Deborah.Miriam.TOMLConfigMiriam
+const PathConfigBuilderMiriam = Deborah.Miriam.PathConfigBuilderMiriam
+const EstherDependencyManager = Deborah.DeborahEsther.EstherDependencyManager
+const MiriamDependencyManager = Deborah.DeborahEstherMiriam.MiriamDependencyManager
 
 @testset "Deborah.jl" begin
     @testset "Top-level smoke test" begin
@@ -164,4 +173,6 @@ const BlockSizeSuggester = Deborah.Sarah.BlockSizeSuggester
         rng2 = SeedManager.setup_rng(850528)
         @test rand(rng1, UInt64) == rand(rng2, UInt64)
     end
+
+    include("sample_workflows.jl")
 end

@@ -2,7 +2,7 @@
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "5c3c591f3e5177a87adb00aa97647ea4c8887249"
+project_hash = "22a04c1c8571c1b8267290e7f71d061ad35464df"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "f7304359109c768cf32dc5fa2d371565bb63b68a"
@@ -393,7 +393,7 @@ version = "1.11.0"
 deps = ["DataFrames", "Dates", "DelimitedFiles", "Distributions", "FileIO", "JLD2", "LightGBM", "LinearAlgebra", "MLJ", "MLJBase", "MLJLinearModels", "NLsolve", "OrderedCollections", "PlotlyJS", "Printf", "ProgressMeter", "PyCall", "PyPlot", "REPL", "Random", "StableRNGs", "StaticArrays", "Statistics", "StatsBase", "TOML"]
 path = "."
 uuid = "d9d56e4b-5314-43d8-9d0c-59f15ab373e7"
-version = "1.0.2"
+version = "1.0.5"
 
 [[deps.DefineSingletons]]
 git-tree-sha1 = "0fba8b706d0178b4dc7fd44a96a92382c9065c2c"
