@@ -141,69 +141,156 @@ function plot_reweighting_pyplot(
         kappa = rw_data_ext[label][train][rwtag_P1][xkey]
         yval  = rw_data_ext[label][train][rwtag_P1][ykey]
         yerr  = rw_data_ext[label][train][rwtag_P1][Symbol(ykey, :_err)]
-        ax.plot(kappa, yval, color="orange", label="P1")
-        ax.fill_between(kappa, yval .- yerr, yval .+ yerr,
-                        color="orange", alpha=0.3, label="P1 Band")
+
+        ax.plot(
+            kappa, 
+            yval,
+            color="orange",
+            label="RWP1"
+        )
+
+        ax.fill_between(
+            kappa,
+            yval .- yerr,
+            yval .+ yerr,
+            color="orange",
+            alpha=0.3,
+            label="RWP1 Band"
+        )
     end
 
     if haskey(rw_data_ext[label][train], rwtag_ORG)
         kappa = rw_data_ext[label][train][rwtag_ORG][xkey]
         yval  = rw_data_ext[label][train][rwtag_ORG][ykey]
         yerr  = rw_data_ext[label][train][rwtag_ORG][Symbol(ykey, :_err)]
-        ax.plot(kappa, yval, color="C0", label="Original")
-        ax.fill_between(kappa, yval .- yerr, yval .+ yerr,
-                        color="C0", alpha=0.3, label="Original Band")
+
+        ax.plot(kappa, yval,
+                color="C0",
+                label="RWOG")
+
+        ax.fill_between(
+            kappa,
+            yval .- yerr,
+            yval .+ yerr,
+            color="C0",
+            alpha=0.3,
+            label="RWOG Band"
+        )
     end
 
     if haskey(rw_data_ext[label][train], rwtag_P2)
         kappa = rw_data_ext[label][train][rwtag_P2][xkey]
         yval  = rw_data_ext[label][train][rwtag_P2][ykey]
         yerr  = rw_data_ext[label][train][rwtag_P2][Symbol(ykey, :_err)]
-        ax.plot(kappa, yval, color="C3", label="P2")
-        ax.fill_between(kappa, yval .- yerr, yval .+ yerr,
-                        color="C3", alpha=0.3, label="P2 Band")
+
+        ax.plot(
+            kappa, 
+            yval,
+            color="C3",
+            label="RWP2"
+        )
+
+        ax.fill_between(
+            kappa,
+            yval .- yerr,
+            yval .+ yerr,
+            color="C3",
+            alpha=0.3,
+            label="RWP2 band"
+        )
     end
 
     if haskey(rw_data_ext[label][train], ytag_P1)
         kappa = rw_data_ext[label][train][ytag_P1][xkey]
         yval  = rw_data_ext[label][train][ytag_P1][ykey]
         yerr  = rw_data_ext[label][train][ytag_P1][Symbol(ykey, :_err)]
-        ax.errorbar(kappa, yval, yerr=yerr,
-                    fmt="^", markersize=10, color="orange", capsize=5, label="RWP1 points")
+
+        ax.errorbar(
+            kappa,
+            yval,
+            yerr=yerr,
+            fmt="^",
+            markersize=10,
+            color="orange",
+            capsize=5,
+            label="P1"
+        )
     end
 
     if haskey(rw_data_ext[label][train], ytag_ORG)
         kappa = rw_data_ext[label][train][ytag_ORG][xkey]
         yval  = rw_data_ext[label][train][ytag_ORG][ykey]
         yerr  = rw_data_ext[label][train][ytag_ORG][Symbol(ykey, :_err)]
-        ax.errorbar(kappa, yval, yerr=yerr,
-                    fmt="s", markersize=10, color="C0", capsize=5, label="RWBS points")
+
+        ax.errorbar(
+            kappa,
+            yval,
+            yerr=yerr,
+            fmt="s",
+            markersize=10,
+            color="C0",
+            capsize=5,
+            label="OG"
+        )
     end
 
     if haskey(rw_data_ext[label][train], ytag_P2)
         kappa = rw_data_ext[label][train][ytag_P2][xkey]
         yval  = rw_data_ext[label][train][ytag_P2][ykey]
         yerr  = rw_data_ext[label][train][ytag_P2][Symbol(ykey, :_err)]
-        ax.errorbar(kappa, yval, yerr=yerr,
-                    fmt="o", markersize=10, color="C3", capsize=5, label="RWP2 points")
+
+        ax.errorbar(
+            kappa,
+            yval,
+            yerr=yerr,
+            fmt="o",
+            markersize=10,
+            color="C3",
+            capsize=5,
+            label="P2"
+        )
     end
 
     if isfinite(kappa_t_P1) && isfinite(cumulant_P1)
-        ax.errorbar([kappa_t_P1], [cumulant_P1],
-                    xerr=[err_kappa_t_P1], yerr=[err_cumulant_P1],
-                    fmt="^", mfc="none", color="orange", capsize=5, label="P1")
+        ax.errorbar(
+            [kappa_t_P1],
+            [cumulant_P1],
+            xerr=[err_kappa_t_P1],
+            yerr=[err_cumulant_P1],
+            fmt="^",
+            mfc="none",
+            color="orange",
+            capsize=5,
+            label="P1(\$\\kappa_T\$)"
+        )
     end
 
     if isfinite(kappa_t_orig) && isfinite(cumulant_orig)
-        ax.errorbar([kappa_t_orig], [cumulant_orig],
-                    xerr=[err_kappa_t_orig], yerr=[err_cumulant_orig],
-                    fmt="s", mfc="none", color="C0", capsize=5, label="ORG")
+        ax.errorbar(
+            [kappa_t_orig],
+            [cumulant_orig],
+            xerr=[err_kappa_t_orig],
+            yerr=[err_cumulant_orig],
+            fmt="s",
+            mfc="none",
+            color="C0",
+            capsize=5,
+            label="OG(\$\\kappa_T\$)"
+        )
     end
 
     if isfinite(kappa_t_P2) && isfinite(cumulant_P2)
-        ax.errorbar([kappa_t_P2], [cumulant_P2],
-                    xerr=[err_kappa_t_P2], yerr=[err_cumulant_P2],
-                    fmt="o", mfc="none", color="C3", capsize=5, label="P2")
+        ax.errorbar(
+            [kappa_t_P2],
+            [cumulant_P2],
+            xerr=[err_kappa_t_P2],
+            yerr=[err_cumulant_P2],
+            fmt="o",
+            mfc="none",
+            color="C3",
+            capsize=5,
+            label="P2(\$\\kappa_T\$)"
+        )
     end
 
     ax.set_xlabel("\$\\kappa\$")
