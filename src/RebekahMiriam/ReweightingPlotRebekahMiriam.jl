@@ -196,7 +196,7 @@ function plot_reweighting_pyplot(
             yval .+ yerr,
             color="C3",
             alpha=0.3,
-            label="RWP2 band"
+            label="RWP2 Band"
         )
     end
 
